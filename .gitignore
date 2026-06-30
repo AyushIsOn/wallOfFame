@@ -3,6 +3,12 @@ dist/
 .DS_Store
 *.local
 
+# Env + local database
+.env
+.data/
+
 # Local scratch / test artifacts
 .nss/
 _smoke.mjs
+_*.mjs
+_*.png

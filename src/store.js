@@ -1,29 +1,27 @@
 // Data store: the single source of truth for the wall, list and filters.
 //
-// This is the seam where a real backend plugs in later. Today it normalises
-// the static `projects` array from data.js; tomorrow `loadStudents()` can be
-// swapped to `fetch('/api/students')` (fed by the Excel -> n8n pipeline)
-// without any other module changing.
+// It renders instantly from the static data.js (offline / first paint), then
+// `load()` fetches the live dataset from /api/students (fed by the admin +
+// Excel/n8n pipeline) and swaps it in. Adding a backend required changing
+// only this file.
 
 import { projects } from "../data.js";
 import { CATEGORIES } from "./config.js";
 
 const TYPE_TO_CATEGORY = { RESEARCH: "research", INTERNSHIP: "internship" };
 
-// Derive the wall thumbnail path from the full-res image path.
-// "/img1.jpeg" -> "/thumbs/img1.webp". Falls back gracefully (textureCache
-// retries the full image if a thumbnail is missing).
 const toThumb = (url) => {
+  if (!url) return null;
   const base = url.split("/").pop().replace(/\.[^.]+$/, "");
   return `/thumbs/${base}.webp`;
 };
 
-// Map a raw record to the stable shape the UI consumes.
-const normalize = (raw, i) => ({
+// Normalise the static data.js shape (used for first paint + offline fallback).
+const normalizeStatic = (raw, i) => ({
   id: i,
   name: raw.title,
-  image: raw.image, // full-res, used by the profile
-  thumbnail: raw.thumbnail || toThumb(raw.image), // lightweight, used by the wall
+  image: raw.image,
+  thumbnail: raw.thumbnail || toThumb(raw.image),
   year: raw.year,
   regNo: raw.regNo,
   department: raw.department,
@@ -37,34 +35,47 @@ const normalize = (raw, i) => ({
   certificate: raw.certificate || "",
 });
 
-let students = projects.map(normalize);
+// Normalise an API record (already close to final shape; guard arrays/objects).
+const normalizeApi = (s) => ({
+  ...s,
+  tags: Array.isArray(s.tags) ? s.tags : [],
+  socials: s.socials || { linkedin: "#", website: "#" },
+});
 
-// Stress-test affordance: `?seed=N` replicates the sample data up to N
-// students with DISTINCT image URLs, so the wall's scaling can be exercised
-// without a real large dataset (e.g. ?seed=500). No effect in normal use.
-if (typeof window !== "undefined") {
-  const seed = parseInt(new URLSearchParams(window.location.search).get("seed") || "", 10);
-  if (Number.isFinite(seed) && seed > students.length) {
-    const base = students;
-    students = Array.from({ length: seed }, (_, i) => {
-      const b = base[i % base.length];
-      return {
-        ...b,
-        id: i,
-        name: `${b.name} #${i + 1}`,
-        image: `${b.image}?v=${i}`,
-        thumbnail: `${b.thumbnail}?v=${i}`,
-      };
-    });
-  }
+let students = projects.map(normalizeStatic);
+const options = { categories: CATEGORIES, departments: [], years: [] };
+
+const seed = typeof window !== "undefined"
+  ? parseInt(new URLSearchParams(window.location.search).get("seed") || "", 10)
+  : NaN;
+const stressMode = Number.isFinite(seed) && seed > 0;
+
+if (stressMode && seed > students.length) {
+  const base = students;
+  students = Array.from({ length: seed }, (_, i) => {
+    const b = base[i % base.length];
+    return {
+      ...b,
+      id: i,
+      name: `${b.name} #${i + 1}`,
+      image: `${b.image}?v=${i}`,
+      thumbnail: b.thumbnail ? `${b.thumbnail}?v=${i}` : null,
+    };
+  });
 }
 
-const unique = (arr) => [...new Set(arr)];
-const departments = unique(students.map((s) => s.department)).sort();
-const years = unique(students.map((s) => s.year)).sort((a, b) => b - a);
+let byId = new Map(students.map((s) => [s.id, s]));
+
+const recomputeOptions = () => {
+  const uniq = (a) => [...new Set(a)];
+  options.departments = uniq(students.map((s) => s.department).filter(Boolean)).sort();
+  options.years = uniq(students.map((s) => s.year).filter(Boolean)).sort((a, b) => b - a);
+};
+recomputeOptions();
 
 const state = { category: "all", department: "all", year: "all", search: "" };
 const listeners = new Set();
+const dataListeners = new Set();
 
 const matches = (s) => {
   if (state.category !== "all" && s.category !== state.category) return false;
@@ -84,11 +95,33 @@ const notify = () => {
   listeners.forEach((fn) => fn(filtered));
 };
 
+async function load() {
+  if (stressMode) return; // stress mode keeps the synthetic dataset
+  try {
+    const res = await fetch("/api/students");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      students = data.map(normalizeApi);
+      byId = new Map(students.map((s) => [s.id, s]));
+      recomputeOptions();
+      dataListeners.forEach((fn) => fn());
+      notify();
+    }
+  } catch {
+    /* keep the static fallback */
+  }
+}
+
 export const store = {
-  students,
-  options: { categories: CATEGORIES, departments, years },
+  get students() {
+    return students;
+  },
+  options,
+  byId: (id) => byId.get(id) ?? byId.get(Number(id)) ?? byId.get(String(id)) ?? null,
   getState: () => ({ ...state }),
   getFiltered,
+  load,
   setFilter(type, value) {
     if (!(type in state) || state[type] === value) return;
     state[type] = value;
@@ -108,5 +141,9 @@ export const store = {
   subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
+  },
+  onData(fn) {
+    dataListeners.add(fn);
+    return () => dataListeners.delete(fn);
   },
 };
