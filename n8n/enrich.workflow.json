@@ -1,0 +1,67 @@
+{
+  "name": "Wall of Fame — Enrich (bio + tags)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wall-of-fame-enrich",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "wall-of-fame-enrich"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.3, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You rewrite a student achievement description into a polished profile bio and extract topic tags. Respond ONLY with a JSON object of the form {\"bio\": string, \"tags\": array of strings}. Bio rules: write in the first person starting with I, at most 256 characters, concise and confident, no emojis or hashtags. Tags: 2 to 3 short UPPERCASE tags such as skills, fields, or notable organisations or conferences. Example input: Aditya did a 6 month research internship and published at ACL 2024 on human computer interaction and adaptive AI interfaces. Example output: {\"bio\":\"I published at ACL 2024 on human-computer interaction and adaptive AI interfaces, exploring how AI can make digital experiences more accessible and intuitive.\",\"tags\":[\"ACL\",\"HCI\",\"AI\"]}' }, { role: 'user', content: ($json.body && $json.body.about) ? String($json.body.about) : '' } ] }) }}",
+        "options": {}
+      },
+      "id": "llm-node",
+      "name": "LLM (Groq / OpenRouter)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $input.first().json; const c = res && res.choices && res.choices[0] && res.choices[0].message ? res.choices[0].message.content : (res.content || ''); let text = String(c || '').trim(); let bio = ''; let tags = []; const obj = text.match(/\\{[\\s\\S]*\\}/); if (obj) { try { const o = JSON.parse(obj[0]); bio = o.bio || ''; if (Array.isArray(o.tags)) tags = o.tags; } catch (e) {} } if (!tags.length) { const arr = text.match(/\\[[\\s\\S]*\\]/); if (arr) { try { tags = JSON.parse(arr[0]); } catch (e) {} } } bio = String(bio).trim().slice(0, 256); tags = tags.map(function (t) { return String(t).replace(/[\\[\\]]/g, '').trim().toUpperCase(); }).filter(Boolean).slice(0, 3); return [{ json: { bio: bio, tags: tags } }];"
+      },
+      "id": "format-node",
+      "name": "Format bio + tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-node",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "LLM (Groq / OpenRouter)", "type": "main", "index": 0 }]] },
+    "LLM (Groq / OpenRouter)": { "main": [[{ "node": "Format bio + tags", "type": "main", "index": 0 }]] },
+    "Format bio + tags": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "pinData": {},
+  "meta": {}
+}

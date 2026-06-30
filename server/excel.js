@@ -23,10 +23,16 @@ const ALIASES = {
 
 const norm = (h) => String(h).trim().toLowerCase();
 
-// Turn common Google Drive share links into a direct-download URL.
+// Turn common Google Drive / OneDrive share links into a direct-download URL.
+// (Requires the shared file to be "anyone with the link" accessible.)
 const directImageUrl = (url) => {
-  const m = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);
-  return m ? `https://drive.google.com/uc?export=download&id=${m[1]}` : url;
+  const g = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);
+  if (g) return `https://drive.google.com/uc?export=download&id=${g[1]}`;
+  if (/1drv\.ms|onedrive\.live\.com|sharepoint\.com/i.test(url)) {
+    const b64 = Buffer.from(url).toString("base64").replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
+    return `https://api.onedrive.com/v1.0/shares/u!${b64}/root/content`;
+  }
+  return url;
 };
 
 const rowToStudent = (row) => {

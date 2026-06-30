@@ -21,7 +21,7 @@ import {
 } from "./students.js";
 import { processImage, fetchRemoteImage } from "./images.js";
 import { parseWorkbook } from "./excel.js";
-import { generateTags } from "./tags.js";
+import { generateTags, enrichAbout } from "./tags.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -104,6 +104,12 @@ app.post("/api/admin/students/:id/tags", requireAuth, wrap(async (req, res) => {
   res.json({ tags: updated.tags });
 }));
 
+// Stateless enrich: rewrite an about text into { bio, tags } WITHOUT saving,
+// so the admin can review the AI bio before committing it.
+app.post("/api/admin/enrich", requireAuth, wrap(async (req, res) => {
+  res.json(await enrichAbout(req.body?.about || ""));
+}));
+
 // Excel/CSV import -> create students (auto-tags rows that have none, and
 // fetches a Photo URL column if present). Idempotent for rows with a Reg No.
 app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (req, res) => {
@@ -114,11 +120,13 @@ app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (re
   let photos = 0;
   const photoErrors = [];
   for (const rec of records) {
-    if (!rec.tags?.length && rec.bio) {
+    if (rec.bio) {
       try {
-        rec.tags = await generateTags(rec.bio);
+        const e = await enrichAbout(rec.bio);
+        if (e.bio) rec.bio = e.bio; // polished, concise first-person bio
+        if (!rec.tags?.length) rec.tags = e.tags;
       } catch {
-        /* leave empty */
+        /* keep the original bio/tags */
       }
     }
     const existing = rec.regNo ? await getByRegNo(rec.regNo) : null;
