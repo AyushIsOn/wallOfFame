@@ -28,7 +28,21 @@ const normalize = (raw, i) => ({
   certificate: raw.certificate || "",
 });
 
-const students = projects.map(normalize);
+let students = projects.map(normalize);
+
+// Stress-test affordance: `?seed=N` replicates the sample data up to N
+// students with DISTINCT image URLs, so the wall's scaling can be exercised
+// without a real large dataset (e.g. ?seed=500). No effect in normal use.
+if (typeof window !== "undefined") {
+  const seed = parseInt(new URLSearchParams(window.location.search).get("seed") || "", 10);
+  if (Number.isFinite(seed) && seed > students.length) {
+    const base = students;
+    students = Array.from({ length: seed }, (_, i) => {
+      const b = base[i % base.length];
+      return { ...b, id: i, name: `${b.name} #${i + 1}`, image: `${b.image}?v=${i}` };
+    });
+  }
+}
 
 const unique = (arr) => [...new Set(arr)];
 const departments = unique(students.map((s) => s.department)).sort();
