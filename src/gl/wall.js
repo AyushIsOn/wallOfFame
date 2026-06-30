@@ -8,7 +8,7 @@
 // bounded no matter how many students exist.
 
 import * as THREE from "three";
-import { WALL, COLORS, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
+import { WALL, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
 import { postVertexShader, postFragmentShader } from "../shaders.js";
 import { CardCache } from "./textureCache.js";
 
@@ -16,6 +16,28 @@ const UI_SELECTOR =
   ".filters-container,.filter-toggle-btn,.list-view-wrapper,.profile-overlay,.view-toggle-container,.search-cta,.search-overlay";
 
 const BLACK = new THREE.Color(0, 0, 0);
+
+// Soft radial alpha mask used for the per-tile hover glow. Tinted per-tile by
+// the photo's dominant color and faded in on hover.
+const buildGlowTexture = () => {
+  const s = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = s;
+  const ctx = canvas.getContext("2d");
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.5, "rgba(255,255,255,0.85)");
+  g.addColorStop(0.85, "rgba(255,255,255,0.3)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+};
+
+const GLOW_MAX = 0.9; // peak opacity of the hover glow
+const HOVER_LERP = 0.18; // hover fade speed
 
 export class Wall {
   constructor(container, onSelect) {
@@ -56,6 +78,9 @@ export class Wall {
     this.tileCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
     this.tileCamera.position.z = 10;
     this.tileGeometry = new THREE.PlaneGeometry(WALL.cellSize, WALL.cellSize);
+    this.glowGeometry = new THREE.PlaneGeometry(WALL.cellSize * 1.3, WALL.cellSize * 1.3);
+    this.glowTexture = buildGlowTexture();
+    this.pointer = null;
 
     this.renderTarget = new THREE.WebGLRenderTarget(
       Math.round(w * this.pixelRatio),
@@ -70,7 +95,14 @@ export class Wall {
     this.postMaterial = new THREE.ShaderMaterial({
       vertexShader: postVertexShader,
       fragmentShader: postFragmentShader,
-      uniforms: { uScene: { value: this.renderTarget.texture } },
+      uniforms: {
+        uScene: { value: this.renderTarget.texture },
+        uOffset: { value: new THREE.Vector2(0, 0) },
+        uZoom: { value: 1 },
+        uResolution: { value: new THREE.Vector2(w, h) },
+        uCellSize: { value: WALL.cellSize },
+        uGridColor: { value: new THREE.Vector4(1, 1, 1, 0.22) },
+      },
     });
     this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.postMaterial));
 
@@ -83,13 +115,38 @@ export class Wall {
 
   growPool(target) {
     while (this.pool.length < target) {
-      const mesh = new THREE.Mesh(
-        this.tileGeometry,
-        new THREE.MeshBasicMaterial({ map: this.cache.placeholder })
+      // Glow sits behind the card; the card has a transparent background so
+      // the colored glow shows around the photo on hover.
+      const glow = new THREE.Mesh(
+        this.glowGeometry,
+        new THREE.MeshBasicMaterial({
+          map: this.glowTexture,
+          color: new THREE.Color(0, 0, 0),
+          transparent: true,
+          opacity: 0,
+          depthTest: false,
+          depthWrite: false,
+        })
       );
-      mesh.visible = false;
-      this.scene.add(mesh);
-      this.pool.push(mesh);
+      glow.renderOrder = 0;
+      glow.visible = false;
+      glow.userData.h = 0;
+
+      const card = new THREE.Mesh(
+        this.tileGeometry,
+        new THREE.MeshBasicMaterial({
+          map: this.cache.placeholder,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        })
+      );
+      card.renderOrder = 1;
+      card.visible = false;
+
+      this.scene.add(glow);
+      this.scene.add(card);
+      this.pool.push({ card, glow });
     }
   }
 
@@ -129,23 +186,42 @@ export class Wall {
     const needed = (maxX - minX + 1) * (maxY - minY + 1);
     if (needed > this.pool.length) this.growPool(needed);
 
+    const hoverCell =
+      this.pointer && !this.dragging
+        ? this.cellCoordsAt(this.pointer.x, this.pointer.y)
+        : null;
+
     const count = this.active.length;
     let i = 0;
     for (let cy = minY; cy <= maxY; cy++) {
       for (let cx = minX; cx <= maxX; cx++) {
         const raw = (cx + cy * WALL.rowStride) % count;
         const idx = ((raw % count) + count) % count;
-        const mesh = this.pool[i++];
-        mesh.position.set((cx + 0.5) * cs, (cy + 0.5) * cs, 0);
-        mesh.material.map = this.cache.get(this.active[idx]);
-        mesh.visible = true;
+        const { card, glow } = this.pool[i++];
+        const px = (cx + 0.5) * cs;
+        const py = (cy + 0.5) * cs;
+
+        const { texture, avg } = this.cache.get(this.active[idx]);
+        card.position.set(px, py, 0);
+        card.material.map = texture;
+        card.visible = true;
+
+        glow.position.set(px, py, 0);
+        glow.material.color.copy(avg);
+        const target = hoverCell && cx === hoverCell.cx && cy === hoverCell.cy ? 1 : 0;
+        glow.userData.h += (target - glow.userData.h) * HOVER_LERP;
+        glow.material.opacity = glow.userData.h * GLOW_MAX;
+        glow.visible = glow.userData.h > 0.01;
       }
     }
-    for (; i < this.pool.length; i++) this.pool[i].visible = false;
+    for (; i < this.pool.length; i++) {
+      this.pool[i].card.visible = false;
+      this.pool[i].glow.visible = false;
+    }
   }
 
-  // Map client coords to the active-set index (same fisheye math as the shader).
-  indexAt(clientX, clientY) {
+  // Map client coords to the cell (cellX, cellY) under the cursor.
+  cellCoordsAt(clientX, clientY) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const sx = ((clientX - rect.left) / rect.width) * 2 - 1;
     const sy = -(((clientY - rect.top) / rect.height) * 2 - 1);
@@ -153,10 +229,14 @@ export class Wall {
     const d = 1 - WALL.distortionK * r2;
     const wx = sx * d * (rect.width / rect.height) * this.zoom + this.offset.x;
     const wy = sy * d * this.zoom + this.offset.y;
-    const cellX = Math.floor(wx / WALL.cellSize);
-    const cellY = Math.floor(wy / WALL.cellSize);
+    return { cx: Math.floor(wx / WALL.cellSize), cy: Math.floor(wy / WALL.cellSize) };
+  }
+
+  // Map client coords to the active-set index (same fisheye math as the shader).
+  indexAt(clientX, clientY) {
+    const { cx, cy } = this.cellCoordsAt(clientX, clientY);
     const count = this.active.length;
-    const raw = (cellX + cellY * WALL.rowStride) % count;
+    const raw = (cx + cy * WALL.rowStride) % count;
     return ((raw % count) + count) % count;
   }
 
@@ -231,6 +311,15 @@ export class Wall {
 
     document.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("resize", () => this.resize());
+
+    // Pointer tracking for the hover glow.
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener("mousemove", (e) => {
+      this.pointer = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener("mouseleave", () => {
+      this.pointer = null;
+    });
   }
 
   resize() {
@@ -238,6 +327,7 @@ export class Wall {
     const h = this.container.offsetHeight;
     this.renderer.setSize(w, h);
     this.renderTarget.setSize(Math.round(w * this.pixelRatio), Math.round(h * this.pixelRatio));
+    this.postMaterial.uniforms.uResolution.value.set(w, h);
   }
 
   animate() {
@@ -255,6 +345,9 @@ export class Wall {
 
     this.cache.beginFrame();
     this.updateVisibleTiles();
+
+    this.postMaterial.uniforms.uOffset.value.set(this.offset.x, this.offset.y);
+    this.postMaterial.uniforms.uZoom.value = this.zoom;
 
     this.renderer.setRenderTarget(this.renderTarget);
     this.renderer.clear();
