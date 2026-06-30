@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Regular.ttf') format('truetype');
+  src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Medium.ttf') format('truetype');
+  src: url('/fonts/IBMPlexMono-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -16,49 +16,15 @@
 
 @font-face {
   font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Bold.ttf') format('truetype');
+  src: url('/fonts/IBMPlexMono-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Helvetica Now';
-  src: url('/fonts/helveticanowtext-bold-demo.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Helvetica Now';
-  src: url('/fonts/helveticanowtext-bolditalic-demo.ttf') format('truetype');
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Helvetica Now';
-  src: url('/fonts/helveticanowtext-black-demo.ttf') format('truetype');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Helvetica Now';
-  src: url('/fonts/helveticanowtext-blackitalic-demo.ttf') format('truetype');
-  font-weight: 900;
-  font-style: italic;
   font-display: swap;
 }
 
 @font-face {
   font-family: 'Klim Font';
-  src: url('/fonts/klim-font.woff2') format('woff2'),
-       url('/fonts/klim-font.woff') format('woff'),
-       url('/fonts/klim-font.ttf') format('truetype');
+  src: url('/fonts/klim-font.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -66,9 +32,7 @@
 
 @font-face {
   font-family: 'At Hauss Mono';
-  src: url('/fonts/AtHaussMono-Regular.woff2') format('woff2'),
-       url('/fonts/AtHaussMono-Regular.woff') format('woff'),
-       url('/fonts/AtHaussMono-Regular.ttf') format('truetype');
+  src: url('/fonts/AtHaussMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -1166,7 +1130,7 @@ header.header-bar button {
 
 .student-title {
   color: #fff;
-  font-family: 'Helvetica Now Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.85rem;
   font-weight: 700;
   margin: 0;
@@ -1675,4 +1639,130 @@ header.header-bar button {
   .profile-bio {
     max-width: 100%;
   }
+}
+
+
+
+/* ==============================
+   SEARCH OVERLAY
+   ============================== */
+.search-overlay {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  transform: translate(-50%, -12px);
+  z-index: 1500;
+  width: min(90vw, 520px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.search-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.search-box-icon {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+#searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--color-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+}
+
+#searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.search-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s ease;
+}
+
+.search-close:hover {
+  color: var(--color-primary);
+}
+
+/* ==============================
+   EMPTY STATE (wall)
+   ============================== */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 24px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.empty-state.active {
+  display: flex;
+}
+
+/* Empty list message */
+.list-empty {
+  list-style: none;
+  padding: 32px 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+}
+
+/* ==============================
+   CERTIFICATE LINK STATE
+   ============================== */
+#profileCertificate {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+#profileCertificate:hover {
+  opacity: 0.6;
+}
+
+#profileCertificate.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: default;
 }

@@ -2,7 +2,7 @@
   "name": "wall-of-fame",
   "version": "1.0.0",
   "description": "Wall of Fame with WebGL gallery",
-  "main": "script.js",
+  "main": "src/main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
