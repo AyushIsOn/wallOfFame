@@ -7,67 +7,91 @@
     <link rel="stylesheet" href="/src/admin/admin.css" />
   </head>
   <body>
+    <div class="bg-glow"></div>
+
     <!-- Login -->
     <div id="login" class="login">
-      <form id="loginForm" class="login-box">
-        <h1>Wall of Fame</h1>
-        <p class="muted">Admin access</p>
-        <input type="password" id="password" placeholder="Admin password" autocomplete="current-password" />
-        <button type="submit">Sign in</button>
-        <p id="loginError" class="error"></p>
-      </form>
+      <div class="login-inner">
+        <div class="eyebrow"><span class="dot"></span> WALL OF FAME — ADMIN</div>
+        <h1 class="display">Welcome.<br />Let's manage the wall.</h1>
+        <form id="loginForm" class="panel login-card">
+          <label class="field-label">Admin password</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+          <button type="submit" class="cta">Sign in <span class="arrow">→</span></button>
+          <p id="loginError" class="error"></p>
+        </form>
+      </div>
     </div>
 
     <!-- App -->
     <div id="app" class="app" hidden>
       <header class="topbar">
-        <div class="brand">Wall of Fame <span>Admin</span></div>
+        <div class="eyebrow"><span class="dot"></span> WALL OF FAME — ADMIN</div>
         <div class="topbar-actions">
-          <a href="/" target="_blank" class="ghost">View wall ↗</a>
-          <button id="logout" class="ghost">Log out</button>
+          <a href="/" target="_blank" class="link-mono">VIEW WALL ↗</a>
+          <button id="logout" class="link-mono">LOG OUT</button>
         </div>
       </header>
 
-      <!-- Primary action: upload a sheet -->
-      <section class="import-panel">
-        <div class="dropzone" id="dropzone">
+      <section class="hero">
+        <h1 class="display">Add students<br />in one upload.</h1>
+        <p class="lede">
+          Drop the form's Excel/CSV — names, batches, tags, socials and photos
+          fill in automatically.
+        </p>
+      </section>
+
+      <section class="cards">
+        <!-- Primary: upload -->
+        <div class="panel card dropzone" id="dropzone">
           <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden />
-          <div class="dz-icon">⬆</div>
-          <p class="dz-title">Drop your Excel / CSV here, or click to upload</p>
-          <p class="dz-sub">One row per student — the wall fills in automatically. Only <b>Name</b> is required.</p>
+          <div class="card-eyebrow"><span class="dot"></span> UPLOAD SHEET</div>
+          <h3 class="card-title">Drop your Excel / CSV here</h3>
+          <p class="card-sub">One row per student. Only <b>Name</b> is required.</p>
+          <span class="card-arrow round">→</span>
         </div>
-        <div class="import-meta">
-          <button type="button" class="btn small" id="templateBtn">⬇ Download template</button>
-          <span class="muted tiny">Columns: Name · Year · Reg No · Department · Type · Duration · Stipend · About/Bio · Tags · LinkedIn · Website · Certificate · Photo URL</span>
+
+        <!-- Template -->
+        <div class="panel card" id="templateCard">
+          <div class="card-eyebrow"><span class="dot"></span> TEMPLATE</div>
+          <h3 class="card-title">Download the template</h3>
+          <p class="card-sub">Pre-filled headers and an example row.</p>
+          <button id="templateBtn" class="card-arrow round" aria-label="Download template">↓</button>
+        </div>
+
+        <!-- Manual -->
+        <div class="panel card" id="addCard">
+          <div class="card-eyebrow"><span class="dot"></span> MANUAL</div>
+          <h3 class="card-title">Add one student</h3>
+          <p class="card-sub">Enter a single record by hand.</p>
+          <button id="addBtn" class="card-arrow round" aria-label="Add student">+</button>
         </div>
       </section>
 
-      <section class="toolbar">
-        <input type="search" id="search" placeholder="Search students…" />
-        <button id="addBtn" class="btn">+ Add one manually</button>
+      <section class="list-section">
+        <div class="section-head">
+          <div class="eyebrow"><span class="dot"></span> STUDENTS</div>
+          <input type="search" id="search" placeholder="Search…" />
+        </div>
+        <p id="status" class="status"></p>
+        <div class="panel table-wrap">
+          <table>
+            <thead>
+              <tr><th></th><th>Name</th><th>Dept</th><th>Year</th><th>Type</th><th>Tags</th><th></th></tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
       </section>
-
-      <p id="status" class="status"></p>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th></th><th>Name</th><th>Dept</th><th>Year</th><th>Type</th><th>Tags</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
     </div>
 
     <!-- Edit / Add modal -->
     <div id="modal" class="modal" hidden>
       <div class="modal-backdrop" data-close></div>
-      <div class="modal-card">
+      <div class="panel modal-card">
         <header class="modal-head">
-          <h2 id="modalTitle">Edit student</h2>
-          <button class="ghost" data-close>✕</button>
+          <h2 id="modalTitle" class="card-title">Edit student</h2>
+          <button class="link-mono" data-close>CLOSE ✕</button>
         </header>
         <div class="modal-body">
           <div class="photo-col">
@@ -109,10 +133,10 @@
           </form>
         </div>
         <footer class="modal-foot">
-          <button id="deleteBtn" class="ghost danger">Delete</button>
+          <button id="deleteBtn" class="link-mono danger">DELETE</button>
           <div>
-            <button class="ghost" data-close>Cancel</button>
-            <button id="saveBtn" class="btn primary">Save</button>
+            <button class="btn" data-close>Cancel</button>
+            <button id="saveBtn" class="cta">Save <span class="arrow">→</span></button>
           </div>
         </footer>
       </div>
