@@ -34,7 +34,7 @@ const drawTitle = (ctx, student, size) => {
   const bottom = toCanvasY(LAYOUT.titleY, size);
   const mid = (top + bottom) / 2;
   const inset = LAYOUT.titleXInset * size;
-  const fontPx = Math.round(LAYOUT.titleHeight * size * 0.85);
+  const fontPx = Math.round(LAYOUT.titleHeight * size * 0.48);
 
   ctx.font = `${fontPx}px '${CANVAS_FONT}', monospace`;
   ctx.textBaseline = "middle";
@@ -53,10 +53,11 @@ const drawTags = (ctx, student, size) => {
   const top = toCanvasY(LAYOUT.tagsY + LAYOUT.tagsHeight, size);
   const bottom = toCanvasY(LAYOUT.tagsY, size);
   const mid = (top + bottom) / 2;
-  const pillH = (bottom - top) * 0.92;
-  const fontPx = Math.round(pillH * 0.5);
-  const padX = fontPx * 0.7;
-  const gap = fontPx * 0.5;
+  const band = bottom - top;
+  const pillH = band * 0.5;
+  const fontPx = Math.round(band * 0.34);
+  const padX = fontPx * 0.75;
+  const gap = fontPx * 0.55;
   const radius = pillH / 2;
 
   ctx.font = `${fontPx}px '${CANVAS_FONT}', monospace`;
@@ -69,12 +70,12 @@ const drawTags = (ctx, student, size) => {
     if (x + w > size - LAYOUT.tagsXInset * size) break;
 
     const y = mid - pillH / 2;
-    ctx.fillStyle = "rgba(40, 40, 40, 0.85)";
+    ctx.fillStyle = "rgba(38, 38, 38, 0.92)";
     ctx.beginPath();
     ctx.roundRect(x, y, w, pillH, radius);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    ctx.lineWidth = Math.max(1, size * 0.002);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = Math.max(1, size * 0.0022);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
@@ -103,17 +104,6 @@ export const drawCard = (student, img, size) => {
 
   drawTitle(ctx, student, size);
   drawTags(ctx, student, size);
-
-  // Grid lines: draw right + bottom edges so adjacent tiles form one grid.
-  const lw = Math.max(1, size * 0.004);
-  ctx.strokeStyle = COLORS.border;
-  ctx.lineWidth = lw;
-  ctx.beginPath();
-  ctx.moveTo(size - lw / 2, 0);
-  ctx.lineTo(size - lw / 2, size);
-  ctx.moveTo(0, size - lw / 2);
-  ctx.lineTo(size, size - lw / 2);
-  ctx.stroke();
 
   return canvas;
 };

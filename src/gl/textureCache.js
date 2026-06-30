@@ -6,7 +6,6 @@
 // network stay bounded no matter how many students exist.
 
 import * as THREE from "three";
-import { COLORS } from "../config.js";
 import { loadImage, drawCard, cardImageUrl } from "./card.js";
 
 const makeTexture = (canvas) => {
@@ -23,10 +22,6 @@ const buildPlaceholder = (size) => {
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, size, size);
-  const lw = Math.max(1, size * 0.004);
-  ctx.strokeStyle = COLORS.border;
-  ctx.lineWidth = lw;
-  ctx.strokeRect(lw / 2, lw / 2, size - lw, size - lw);
   return makeTexture(canvas);
 };
 

@@ -70,7 +70,14 @@ export class Wall {
     this.postMaterial = new THREE.ShaderMaterial({
       vertexShader: postVertexShader,
       fragmentShader: postFragmentShader,
-      uniforms: { uScene: { value: this.renderTarget.texture } },
+      uniforms: {
+        uScene: { value: this.renderTarget.texture },
+        uOffset: { value: new THREE.Vector2(0, 0) },
+        uZoom: { value: 1 },
+        uResolution: { value: new THREE.Vector2(w, h) },
+        uCellSize: { value: WALL.cellSize },
+        uGridColor: { value: new THREE.Vector4(1, 1, 1, 0.22) },
+      },
     });
     this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.postMaterial));
 
@@ -238,6 +245,7 @@ export class Wall {
     const h = this.container.offsetHeight;
     this.renderer.setSize(w, h);
     this.renderTarget.setSize(Math.round(w * this.pixelRatio), Math.round(h * this.pixelRatio));
+    this.postMaterial.uniforms.uResolution.value.set(w, h);
   }
 
   animate() {
@@ -255,6 +263,9 @@ export class Wall {
 
     this.cache.beginFrame();
     this.updateVisibleTiles();
+
+    this.postMaterial.uniforms.uOffset.value.set(this.offset.x, this.offset.y);
+    this.postMaterial.uniforms.uZoom.value = this.zoom;
 
     this.renderer.setRenderTarget(this.renderTarget);
     this.renderer.clear();
