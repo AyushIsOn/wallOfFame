@@ -200,22 +200,58 @@ $("deleteBtn").addEventListener("click", async () => {
   await loadStudents();
 });
 
-// ---- Import ----
-$("importFile").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
+// ---- Import (primary flow) ----
+const TEMPLATE =
+  "Name,Year,Reg No,Department,Type,Duration,Stipend,About,Tags,LinkedIn,Website,Certificate,Photo URL\n" +
+  'ADITYA GURU,2024,22541001,CSE,RESEARCH,6 MONTHS,250000,"Published at ACL' +
+  "'" +
+  '24 on HCI and AI.","ACL' +
+  "'" +
+  '24, HCI, AI",https://linkedin.com/in/example,https://example.com,https://example.com/cert.pdf,https://drive.google.com/file/d/FILE_ID/view\n';
+
+$("templateBtn").addEventListener("click", () => {
+  const blob = new Blob([TEMPLATE], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "wall-of-fame-template.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+async function handleImport(file) {
   if (!file) return;
   try {
     status(`Importing ${file.name}…`);
     const fd = new FormData();
     fd.append("file", file);
-    const { imported } = await api("/api/admin/import", { method: "POST", form: true, body: fd });
+    const r = await api("/api/admin/import", { method: "POST", form: true, body: fd });
     await loadStudents();
-    status(`Imported ${imported} students`);
+    let msg = `Imported ${r.imported} new`;
+    if (r.updated) msg += `, updated ${r.updated}`;
+    if (r.photos) msg += `, ${r.photos} photos`;
+    if (r.photoErrors?.length) msg += ` — ${r.photoErrors.length} photo(s) failed`;
+    status(msg);
+    if (r.photoErrors?.length) console.warn("Photo errors:", r.photoErrors);
   } catch (err) {
     status(err.message);
-  } finally {
-    e.target.value = "";
   }
+}
+
+const dropzone = $("dropzone");
+dropzone.addEventListener("click", () => $("importFile").click());
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
+});
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+  handleImport(e.dataTransfer.files[0]);
+});
+$("importFile").addEventListener("change", (e) => {
+  handleImport(e.target.files[0]);
+  e.target.value = "";
 });
 
 function escapeHtml(str) {
