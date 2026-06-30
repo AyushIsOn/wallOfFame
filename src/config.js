@@ -20,17 +20,18 @@ export const COLORS = {
 // Radial fade applied at the screen edges (in normalised screen radius).
 export const FADE = { start: 1.2, end: 1.8 };
 
-// Cell sub-region layout, in cell-local UV (y = 0 bottom .. 1 top). These
-// place the photo in the centre, the title band near the top and the tags
-// band near the bottom of each tile.
+// Cell sub-region layout, in cell-local UV (y = 0 bottom .. 1 top). Symmetric:
+// the title band (top) and tags band (bottom) sit at equal margins from their
+// edges with equal heights, and share one horizontal inset -> 4 balanced
+// corners (name TL, year TR, tags BL, department BR).
 export const LAYOUT = {
   imageSize: 0.6,
-  titleY: 0.82,
-  titleHeight: 0.06,
-  titleXInset: 0.05,
-  tagsY: 0.03,
+  titleY: 0.87,
+  titleHeight: 0.07,
+  titleXInset: 0.06,
+  tagsY: 0.06,
   tagsHeight: 0.07,
-  tagsXInset: 0.02,
+  tagsXInset: 0.06,
 };
 
 const isSmallScreen =
