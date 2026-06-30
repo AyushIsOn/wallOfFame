@@ -10,11 +10,20 @@ import { CATEGORIES } from "./config.js";
 
 const TYPE_TO_CATEGORY = { RESEARCH: "research", INTERNSHIP: "internship" };
 
+// Derive the wall thumbnail path from the full-res image path.
+// "/img1.jpeg" -> "/thumbs/img1.webp". Falls back gracefully (textureCache
+// retries the full image if a thumbnail is missing).
+const toThumb = (url) => {
+  const base = url.split("/").pop().replace(/\.[^.]+$/, "");
+  return `/thumbs/${base}.webp`;
+};
+
 // Map a raw record to the stable shape the UI consumes.
 const normalize = (raw, i) => ({
   id: i,
   name: raw.title,
-  image: raw.image,
+  image: raw.image, // full-res, used by the profile
+  thumbnail: raw.thumbnail || toThumb(raw.image), // lightweight, used by the wall
   year: raw.year,
   regNo: raw.regNo,
   department: raw.department,
@@ -28,7 +37,27 @@ const normalize = (raw, i) => ({
   certificate: raw.certificate || "",
 });
 
-const students = projects.map(normalize);
+let students = projects.map(normalize);
+
+// Stress-test affordance: `?seed=N` replicates the sample data up to N
+// students with DISTINCT image URLs, so the wall's scaling can be exercised
+// without a real large dataset (e.g. ?seed=500). No effect in normal use.
+if (typeof window !== "undefined") {
+  const seed = parseInt(new URLSearchParams(window.location.search).get("seed") || "", 10);
+  if (Number.isFinite(seed) && seed > students.length) {
+    const base = students;
+    students = Array.from({ length: seed }, (_, i) => {
+      const b = base[i % base.length];
+      return {
+        ...b,
+        id: i,
+        name: `${b.name} #${i + 1}`,
+        image: `${b.image}?v=${i}`,
+        thumbnail: `${b.thumbnail}?v=${i}`,
+      };
+    });
+  }
+}
 
 const unique = (arr) => [...new Set(arr)];
 const departments = unique(students.map((s) => s.department)).sort();

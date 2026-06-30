@@ -1,28 +1,21 @@
-// The infinite WebGL wall: one full-screen quad whose fragment shader tiles
-// the active student set procedurally. Panning, zoom, hover and click
-// hit-testing all share the constants in config.js with the shader.
+// Virtualised infinite wall.
+//
+// Instead of one quad sampling a giant atlas of every photo, the wall now
+// draws only the tiles visible in the viewport (a small recycled pool of
+// textured quads) into an offscreen buffer, then post-processes that buffer
+// with barrel distortion + edge fade. Each visible student's photo+text is a
+// streamed, LRU-cached card texture. GPU memory and network therefore stay
+// bounded no matter how many students exist.
 
 import * as THREE from "three";
-import { WALL, COLORS, CANVAS_FONT } from "../config.js";
-import { vertexShader, fragmentShader } from "../shaders.js";
-import {
-  createTitleTexture,
-  createTagsTexture,
-  createTextureAtlas,
-  loadImageTextures,
-} from "./textures.js";
+import { WALL, COLORS, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
+import { postVertexShader, postFragmentShader } from "../shaders.js";
+import { CardCache } from "./textureCache.js";
 
-const rgbaToArray = (rgba) => {
-  const match = rgba.match(/rgba?\(([^)]+)\)/);
-  if (!match) return [1, 1, 1, 1];
-  return match[1]
-    .split(",")
-    .map((v, i) => (i < 3 ? parseFloat(v.trim()) / 255 : parseFloat(v.trim() || 1)));
-};
-
-// Selectors that should NOT start a wall drag when pressed.
 const UI_SELECTOR =
   ".filters-container,.filter-toggle-btn,.list-view-wrapper,.profile-overlay,.view-toggle-container,.search-cta,.search-overlay";
+
+const BLACK = new THREE.Color(0, 0, 0);
 
 export class Wall {
   constructor(container, onSelect) {
@@ -37,95 +30,127 @@ export class Wall {
     this.clickStartTime = 0;
     this.prevMouse = { x: 0, y: 0 };
     this.active = [];
+    this.pool = [];
   }
 
-  async init(allStudents) {
-    this.allStudents = allStudents;
-
-    // Rasterise text with the real font (not a fallback).
+  async init() {
     await document.fonts.ready;
     try {
       await document.fonts.load(`80px '${CANVAS_FONT}'`);
     } catch (_) {
-      /* fall back to system font if unavailable */
+      /* fall back to a system font */
     }
 
-    // Per-student textures, index-aligned to allStudents (student.id == index).
-    this.titleTextures = allStudents.map((s) => createTitleTexture(s.name, s.year));
-    this.tagsTextures = allStudents.map((s) => createTagsTexture(s.tags));
-    this.imageTextures = await loadImageTextures(allStudents);
+    const w = this.container.offsetWidth;
+    const h = this.container.offsetHeight;
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-    this.camera.position.z = 1;
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    this.renderer.setSize(this.container.offsetWidth, this.container.offsetHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    const bg = rgbaToArray(COLORS.background);
-    this.renderer.setClearColor(new THREE.Color(bg[0], bg[1], bg[2]), bg[3]);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.renderer.setSize(w, h);
+    this.renderer.setClearColor(BLACK, 1);
     this.container.appendChild(this.renderer.domElement);
 
-    this.uniforms = {
-      uOffset: { value: new THREE.Vector2(0, 0) },
-      uResolution: {
-        value: new THREE.Vector2(this.container.offsetWidth, this.container.offsetHeight),
-      },
-      uBorderColor: { value: new THREE.Vector4(...rgbaToArray(COLORS.border)) },
-      uHoverColor: { value: new THREE.Vector4(...rgbaToArray(COLORS.hover)) },
-      uBackgroundColor: { value: new THREE.Vector4(...rgbaToArray(COLORS.background)) },
-      uMousePos: { value: new THREE.Vector2(-1, -1) },
-      uZoom: { value: 1 },
-      uCellSize: { value: WALL.cellSize },
-      uTextureCount: { value: 1 },
-      uImageAtlas: { value: null },
-      uTitleAtlas: { value: null },
-      uTagsAtlas: { value: null },
-    };
+    // Tile scene (flat grid) rendered into an offscreen target.
+    this.scene = new THREE.Scene();
+    this.tileCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+    this.tileCamera.position.z = 10;
+    this.tileGeometry = new THREE.PlaneGeometry(WALL.cellSize, WALL.cellSize);
 
-    const material = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms: this.uniforms,
+    this.renderTarget = new THREE.WebGLRenderTarget(
+      Math.round(w * this.pixelRatio),
+      Math.round(h * this.pixelRatio),
+      { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }
+    );
+
+    // Fullscreen post-process pass (distortion + fade).
+    this.postScene = new THREE.Scene();
+    this.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+    this.postCamera.position.z = 1;
+    this.postMaterial = new THREE.ShaderMaterial({
+      vertexShader: postVertexShader,
+      fragmentShader: postFragmentShader,
+      uniforms: { uScene: { value: this.renderTarget.texture } },
     });
-    this.plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-    this.scene.add(this.plane);
+    this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.postMaterial));
 
-    this.setActiveStudents(allStudents);
+    this.cache = new CardCache({ size: CARD.size, limit: CARD.cacheLimit, onReady: () => {} });
+
+    this.growPool(TILE_POOL);
     this.attachEvents();
     this.animate();
   }
 
-  // Re-pack the atlases for a (possibly filtered) subset of students.
+  growPool(target) {
+    while (this.pool.length < target) {
+      const mesh = new THREE.Mesh(
+        this.tileGeometry,
+        new THREE.MeshBasicMaterial({ map: this.cache.placeholder })
+      );
+      mesh.visible = false;
+      this.scene.add(mesh);
+      this.pool.push(mesh);
+    }
+  }
+
   setActiveStudents(active) {
     this.active = active;
-    if (!active.length) {
-      this.renderer.domElement.style.visibility = "hidden";
-      return;
+    if (this.renderer) {
+      this.renderer.domElement.style.visibility = active.length ? "visible" : "hidden";
     }
-    this.renderer.domElement.style.visibility = "visible";
-
-    const pick = (arr) => active.map((s) => arr[s.id]);
-    this.disposeAtlases();
-    this.uniforms.uImageAtlas.value = createTextureAtlas(pick(this.imageTextures), false);
-    this.uniforms.uTitleAtlas.value = createTextureAtlas(pick(this.titleTextures), true);
-    this.uniforms.uTagsAtlas.value = createTextureAtlas(pick(this.tagsTextures), true);
-    this.uniforms.uTextureCount.value = active.length;
   }
 
-  disposeAtlases() {
-    ["uImageAtlas", "uTitleAtlas", "uTagsAtlas"].forEach((key) => {
-      this.uniforms[key].value?.dispose?.();
-    });
+  // Assign pooled tiles to the cells currently in view.
+  updateVisibleTiles() {
+    const w = this.container.offsetWidth;
+    const h = this.container.offsetHeight;
+    const aspect = w / h;
+    const halfW = aspect * this.zoom;
+    const halfH = this.zoom;
+    const cs = WALL.cellSize;
+    const m = WALL.cellMargin;
+
+    const left = this.offset.x - halfW;
+    const right = this.offset.x + halfW;
+    const bottom = this.offset.y - halfH;
+    const top = this.offset.y + halfH;
+
+    this.tileCamera.left = left;
+    this.tileCamera.right = right;
+    this.tileCamera.top = top;
+    this.tileCamera.bottom = bottom;
+    this.tileCamera.updateProjectionMatrix();
+
+    const minX = Math.floor(left / cs) - m;
+    const maxX = Math.floor(right / cs) + m;
+    const minY = Math.floor(bottom / cs) - m;
+    const maxY = Math.floor(top / cs) + m;
+
+    const needed = (maxX - minX + 1) * (maxY - minY + 1);
+    if (needed > this.pool.length) this.growPool(needed);
+
+    const count = this.active.length;
+    let i = 0;
+    for (let cy = minY; cy <= maxY; cy++) {
+      for (let cx = minX; cx <= maxX; cx++) {
+        const raw = (cx + cy * WALL.rowStride) % count;
+        const idx = ((raw % count) + count) % count;
+        const mesh = this.pool[i++];
+        mesh.position.set((cx + 0.5) * cs, (cy + 0.5) * cs, 0);
+        mesh.material.map = this.cache.get(this.active[idx]);
+        mesh.visible = true;
+      }
+    }
+    for (; i < this.pool.length; i++) this.pool[i].visible = false;
   }
 
-  // Map client coords to the active-set index using the same math as the shader.
+  // Map client coords to the active-set index (same fisheye math as the shader).
   indexAt(clientX, clientY) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const sx = ((clientX - rect.left) / rect.width) * 2 - 1;
     const sy = -(((clientY - rect.top) / rect.height) * 2 - 1);
-    const r = Math.sqrt(sx * sx + sy * sy);
-    const d = 1 - WALL.distortionK * r * r;
+    const r2 = sx * sx + sy * sy;
+    const d = 1 - WALL.distortionK * r2;
     const wx = sx * d * (rect.width / rect.height) * this.zoom + this.offset.x;
     const wy = sy * d * this.zoom + this.offset.y;
     const cellX = Math.floor(wx / WALL.cellSize);
@@ -136,8 +161,6 @@ export class Wall {
   }
 
   attachEvents() {
-    const canvas = this.renderer.domElement;
-
     const startDrag = (x, y, target) => {
       if (target && target.closest && target.closest(UI_SELECTOR)) return;
       this.dragging = true;
@@ -208,20 +231,13 @@ export class Wall {
 
     document.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("resize", () => this.resize());
-
-    canvas.addEventListener("mousemove", (e) => {
-      const rect = canvas.getBoundingClientRect();
-      this.uniforms.uMousePos.value.set(e.clientX - rect.left, e.clientY - rect.top);
-    });
-    canvas.addEventListener("mouseleave", () => this.uniforms.uMousePos.value.set(-1, -1));
   }
 
   resize() {
-    const { offsetWidth: w, offsetHeight: h } = this.container;
-    this.camera.updateProjectionMatrix();
+    const w = this.container.offsetWidth;
+    const h = this.container.offsetHeight;
     this.renderer.setSize(w, h);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.uniforms.uResolution.value.set(w, h);
+    this.renderTarget.setSize(Math.round(w * this.pixelRatio), Math.round(h * this.pixelRatio));
   }
 
   animate() {
@@ -230,8 +246,23 @@ export class Wall {
     this.offset.x += (this.targetOffset.x - this.offset.x) * k;
     this.offset.y += (this.targetOffset.y - this.offset.y) * k;
     this.zoom += (this.targetZoom - this.zoom) * k;
-    this.uniforms.uOffset.value.set(this.offset.x, this.offset.y);
-    this.uniforms.uZoom.value = this.zoom;
-    this.renderer.render(this.scene, this.camera);
+
+    if (!this.active.length) {
+      this.renderer.setRenderTarget(null);
+      this.renderer.clear();
+      return;
+    }
+
+    this.cache.beginFrame();
+    this.updateVisibleTiles();
+
+    this.renderer.setRenderTarget(this.renderTarget);
+    this.renderer.clear();
+    this.renderer.render(this.scene, this.tileCamera);
+
+    this.renderer.setRenderTarget(null);
+    this.renderer.render(this.postScene, this.postCamera);
+
+    this.cache.evict();
   }
 }

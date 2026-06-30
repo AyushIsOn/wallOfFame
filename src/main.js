@@ -19,7 +19,13 @@ const start = async () => {
   const openProfile = (student) => profile.open(student, store.getFiltered());
 
   const wall = new Wall(container, openProfile);
-  await wall.init(store.students);
+  await wall.init();
+
+  // Debug/stress: expose the wall so the headless test (and you, via ?debug)
+  // can inspect GPU texture count etc.
+  if (typeof window !== "undefined" && /[?&](seed|debug)=/.test(window.location.search)) {
+    window.__wall = wall;
+  }
 
   const list = initListView(openProfile);
   initViewToggle();
