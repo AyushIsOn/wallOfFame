@@ -61,7 +61,7 @@ export class Wall {
       uOffset: { value: new THREE.Vector2(0, 0) },
       uZoom: { value: 1 },
       uAspect: { value: w / h },
-      uGrid: { value: new THREE.Vector4(1, 1, 1, 0.16) },
+      uGrid: { value: new THREE.Vector4(1, 1, 1, 0.22) },
     };
 
     this.cache = new CardCache({ size: CARD.size, limit: CARD.cacheLimit, onReady: () => {} });
@@ -76,6 +76,7 @@ export class Wall {
       const material = new THREE.ShaderMaterial({
         vertexShader: tileVertexShader,
         fragmentShader: tileFragmentShader,
+        extensions: { derivatives: true },
         uniforms: {
           uOffset: this.shared.uOffset,
           uZoom: this.shared.uZoom,
