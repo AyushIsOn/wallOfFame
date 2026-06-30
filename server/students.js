@@ -54,6 +54,12 @@ export async function getStudent(id) {
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
+export async function getByRegNo(regNo) {
+  if (!regNo) return null;
+  const { rows } = await query(`SELECT ${LIST_COLS} FROM students WHERE reg_no = $1 LIMIT 1`, [regNo]);
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+
 // Build (columns, placeholders, values) from the frontend shape. Only provided
 // fields are included; tags is cast to jsonb.
 const buildColumns = (data, { withName }) => {

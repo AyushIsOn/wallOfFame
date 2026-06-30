@@ -12,6 +12,7 @@ import { login, requireAuth } from "./auth.js";
 import {
   listStudents,
   getStudent,
+  getByRegNo,
   createStudent,
   updateStudent,
   deleteStudent,
@@ -28,6 +29,12 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+
+// Any :id must be a positive integer; otherwise 404 (avoids DB cast errors).
+app.param("id", (req, res, next, val) => {
+  if (!/^\d+$/.test(val)) return res.status(404).json({ error: "Not found" });
+  next();
+});
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -75,9 +82,16 @@ app.delete("/api/admin/students/:id", requireAuth, wrap(async (req, res) => {
 
 // Image upload -> resize -> store full + thumb.
 app.post("/api/admin/students/:id/image", requireAuth, upload.single("image"), wrap(async (req, res) => {
+  const student = await getStudent(req.params.id);
+  if (!student) return res.status(404).json({ error: "Not found" });
   if (!req.file) return res.status(400).json({ error: "No image uploaded" });
-  const { full, thumb } = await processImage(req.file.buffer);
-  await setImageBlob(req.params.id, full, thumb);
+  let processed;
+  try {
+    processed = await processImage(req.file.buffer);
+  } catch {
+    return res.status(400).json({ error: "Invalid or unsupported image file" });
+  }
+  await setImageBlob(req.params.id, processed.full, processed.thumb);
   res.json(await getStudent(req.params.id));
 }));
 
@@ -91,10 +105,12 @@ app.post("/api/admin/students/:id/tags", requireAuth, wrap(async (req, res) => {
 }));
 
 // Excel/CSV import -> create students (auto-tags rows that have none).
+// Idempotent for rows with a Reg No: an existing match is updated, not duplicated.
 app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   const records = parseWorkbook(req.file.buffer);
-  const created = [];
+  let imported = 0;
+  let updated = 0;
   for (const rec of records) {
     if (!rec.tags?.length && rec.bio) {
       try {
@@ -103,9 +119,16 @@ app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (re
         /* leave empty */
       }
     }
-    created.push(await createStudent(rec));
+    const existing = rec.regNo ? await getByRegNo(rec.regNo) : null;
+    if (existing) {
+      await updateStudent(existing.id, rec);
+      updated++;
+    } else {
+      await createStudent(rec);
+      imported++;
+    }
   }
-  res.json({ imported: created.length, students: created });
+  res.json({ imported, updated, total: records.length });
 }));
 
 // ---- Static frontend ----
@@ -115,6 +138,12 @@ app.get("/", (_req, res) => res.sendFile(path.join(distDir, "index.html")));
 
 // ---- Error handler ----
 app.use((err, _req, res, _next) => {
+  if (err && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ error: "File too large (max 15MB)" });
+  }
+  if (err && err.name === "MulterError") {
+    return res.status(400).json({ error: err.message });
+  }
   console.error(err);
   res.status(500).json({ error: err.message || "Server error" });
 });

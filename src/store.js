@@ -101,7 +101,7 @@ async function load() {
     const res = await fetch("/api/students");
     if (!res.ok) return;
     const data = await res.json();
-    if (Array.isArray(data) && data.length) {
+    if (Array.isArray(data)) {
       students = data.map(normalizeApi);
       byId = new Map(students.map((s) => [s.id, s]));
       recomputeOptions();
