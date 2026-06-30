@@ -17,7 +17,8 @@ export const fragmentShader = `
   uniform float uCellSize;
   uniform float uTextureCount;
   uniform sampler2D uImageAtlas;
-  uniform sampler2D uTextAtlas;
+  uniform sampler2D uNameAtlas;
+  uniform sampler2D uTagsAtlas;
   varying vec2 vUv;
   
   void main() {
@@ -79,18 +80,25 @@ export const fragmentShader = `
     
     bool inImageArea = imageUV.x >= 0.0 && imageUV.x <= 1.0 && imageUV.y >= 0.0 && imageUV.y <= 1.0;
     
-    float textHeight = 0.08;
-    float textY = 0.88;
+    // Name area - at the top of cell (reduced height to match canvas aspect better)
+    float nameHeight = 0.07;  // Reduced from 0.06 to further reduce vertical stretching
+    float nameY = 0.03;
+    bool inNameArea = cellUV.x >= 0.02 && cellUV.x <= 0.98 && cellUV.y >= nameY && cellUV.y <= (nameY + nameHeight);
     
-    bool inTextArea = cellUV.x >= 0.05 && cellUV.x <= 0.95 && cellUV.y >= textY && cellUV.y <= (textY + textHeight);
+    // Tags area - below the image at the bottom (increased height to match taller canvas)
+    float tagsHeight = 0.06;  // Increased from 0.12 to 0.15 to accommodate taller canvas (180px)
+    float tagsY = 0.82;  // Moved up slightly from 0.85 for better positioning
+    bool inTagsArea = cellUV.x >= 0.05 && cellUV.x <= 0.95 && cellUV.y >= tagsY && cellUV.y <= (tagsY + tagsHeight);
     
     float texIndex = mod(cellId.x + cellId.y * 3.0, uTextureCount);
+    
+    // Calculate atlas layout once (shared by all texture atlases)
+    float atlasSize = ceil(sqrt(uTextureCount));
+    vec2 atlasPos = vec2(mod(texIndex, atlasSize), floor(texIndex / atlasSize));
     
     vec3 color = backgroundColor;
     
     if (inImageArea && imageAlpha > 0.0) {
-      float atlasSize = ceil(sqrt(uTextureCount));
-      vec2 atlasPos = vec2(mod(texIndex, atlasSize), floor(texIndex / atlasSize));
       vec2 atlasUV = (atlasPos + imageUV) / atlasSize;
       atlasUV.y = 1.0 - atlasUV.y;
       
@@ -98,15 +106,27 @@ export const fragmentShader = `
       color = mix(color, imageColor, imageAlpha);
     }
     
-    if (inTextArea) {
-      vec2 textCoord = vec2((cellUV.x - 0.05) / 0.9, (cellUV.y - textY) / textHeight);
-      textCoord.y = 1.0 - textCoord.y;
+    // Render name and year (top of cell, samples from uNameAtlas)
+    if (inNameArea) {
+      vec2 nameCoord = vec2((cellUV.x - 0.02) / 0.96, (cellUV.y - nameY) / nameHeight);
+      nameCoord.y = 1.0 - nameCoord.y;
       
-      float atlasSize = ceil(sqrt(uTextureCount));
-      vec2 atlasPos = vec2(mod(texIndex, atlasSize), floor(texIndex / atlasSize));
-      vec2 atlasUV = (atlasPos + textCoord) / atlasSize;
+      vec2 atlasUV = (atlasPos + nameCoord) / atlasSize;
       
-      vec4 textColor = texture2D(uTextAtlas, atlasUV);
+      vec4 textColor = texture2D(uNameAtlas, atlasUV);
+      
+      vec3 textBgColor = backgroundColor;
+      color = mix(textBgColor, textColor.rgb, textColor.a);
+    }
+    
+    // Render tags (bottom of cell, samples from uTagsAtlas)
+    if (inTagsArea) {
+      vec2 tagsCoord = vec2((cellUV.x - 0.05) / 0.9, (cellUV.y - tagsY) / tagsHeight);
+      tagsCoord.y = 1.0 - tagsCoord.y;
+      
+      vec2 atlasUV = (atlasPos + tagsCoord) / atlasSize;
+      
+      vec4 textColor = texture2D(uTagsAtlas, atlasUV);
       
       vec3 textBgColor = backgroundColor;
       color = mix(textBgColor, textColor.rgb, textColor.a);

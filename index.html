@@ -3,14 +3,251 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phantom-Inspired Draggable Infinite Gallery | Codegrid</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <title>Wall of Fame</title>
+    
+    <!-- Font Preloading -->
+    <link rel="preload" href="/fonts/AtHaussMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/AtHaussMono-Regular.woff" as="font" type="font/woff" crossorigin>
+    <link rel="preload" href="/fonts/AtHaussMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Header Component -->
+    <header class="page-width relative grid-layout header-bar">
+      <div class="gradient-blur-bg"></div>
+      
+      <div class="logo-container">
+        <a href="/" class="home-logo" aria-label="Wall of Fame Home">
+          <span class="logo-line-1">Wall <span class="big-o">o</span>f</span>
+          <span class="logo-line-2">Fame</span>
+        </a>
+        
+        <!-- Achievement Icons -->
+        <div class="achievement-icons-wrapper">
+        </div>
+      </div>
+
+      <p class="short-description">
+        Showcasing outstanding student achievements, internships, research projects, and academic excellence.
+      </p>
+
+      <div class="search-cta">
+        <div class="get-featured-link">
+          <svg class="link-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.666 10.995H0V13.6606H2.666V10.995ZM5.332 8.32938H2.666V10.995H5.332V8.32938ZM13.33 0.33252H10.664V2.99814H13.33V0.33252ZM10.664 0.33252H0V2.99814H10.664V0.33252ZM10.664 2.99814H13.33V13.6606H10.664V2.99814ZM7.998 5.66376H5.332V8.32938H7.998V5.66376ZM10.664 2.99814H7.998V5.66376H10.664V2.99814Z" fill="currentColor"/>
+          </svg>
+          <span>GET FEATURED</span>
+        </div>
+        <button class="search-btn" id="searchBtn">
+          <span>SEARCH</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- View Toggle Component -->
+    <div class="view-toggle-container">
+      <ul class="view-toggle">
+        <div class="toggle-highlight"></div>
+        <li class="toggle-option-container active" data-view="wall">
+          <button type="button" aria-label="Wall View">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </li>
+        <li class="toggle-option-container" data-view="list">
+          <button type="button" aria-label="List View">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Floating Filter Toggle Button -->
+    <button class="filter-toggle-btn" id="filterToggle" aria-label="Toggle Filters">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>FILTERS</span>
+    </button>
+
+    <!-- Filters Panel -->
+    <div class="filters-container">
+      <div class="filters-header">
+        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="filters-title">FILTERS</span>
+      </div>
+      
+      <div class="filters-content">
+        <!-- Category Filters -->
+        <div class="filter-section">
+          <h3 class="filter-section-title">CATEGORY</h3>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all" data-type="category">ALL</button>
+            <button class="filter-pill" data-filter="internship" data-type="category">INTERNSHIP</button>
+            <button class="filter-pill" data-filter="hackathons" data-type="category">HACKATHONS</button>
+            <button class="filter-pill" data-filter="research" data-type="category">RESEARCH</button>
+            <button class="filter-pill" data-filter="fellowship" data-type="category">FELLOWSHIP</button>
+            <button class="filter-pill" data-filter="grants" data-type="category">GRANTS</button>
+            <button class="filter-pill" data-filter="incubation" data-type="category">INCUBATION</button>
+            <button class="filter-pill" data-filter="exams" data-type="category">EXAMS</button>
+            <button class="filter-pill" data-filter="patent" data-type="category">PATENT</button>
+            <button class="filter-pill" data-filter="sports" data-type="category">SPORTS</button>
+            <button class="filter-pill" data-filter="services" data-type="category">SERVICES</button>
+            <button class="filter-pill" data-filter="others" data-type="category">OTHERS</button>
+          </div>
+        </div>
+
+        <!-- Department Filters -->
+        <div class="filter-section">
+          <h3 class="filter-section-title">DEPARTMENT</h3>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all" data-type="department">ALL</button>
+            <button class="filter-pill" data-filter="cse" data-type="department">CSE</button>
+            <button class="filter-pill" data-filter="cai" data-type="department">CAI</button>
+            <button class="filter-pill" data-filter="cse-alt" data-type="department">CSE</button>
+            <button class="filter-pill" data-filter="ite" data-type="department">ITE</button>
+            <button class="filter-pill" data-filter="cii" data-type="department">CII</button>
+            <button class="filter-pill" data-filter="cce" data-type="department">CCE</button>
+            <button class="filter-pill" data-filter="ece" data-type="department">ECE</button>
+            <button class="filter-pill" data-filter="mee" data-type="department">MEE</button>
+          </div>
+        </div>
+
+        <!-- Year Filters -->
+        <div class="filter-section">
+          <h3 class="filter-section-title">YEAR</h3>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all" data-type="year">ALL</button>
+            <button class="filter-pill" data-filter="2025" data-type="year">2025</button>
+            <button class="filter-pill" data-filter="2026" data-type="year">2026</button>
+            <button class="filter-pill" data-filter="2027" data-type="year">2027</button>
+            <button class="filter-pill" data-filter="2028" data-type="year">2028</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Gallery Container -->
     <section id="gallery">
       <div class="vignette-overlay"></div>
     </section>
 
-    <script type="module" src="/script.js"></script>
+    <!-- List View Container -->
+    <div class="list-view-wrapper" style="display: none;">
+      <div class="page-container">
+        <div class="page-wrapper">
+          <div class="project-list-wrapper">
+            <div class="project-list-container">
+              <div class="header">
+                <h2>Featured Students</h2>
+              </div>
+              <div class="projects-container">
+                <div class="student-group">
+                  <p>All Projects</p>
+                  <ul class="student-list-items-wrapper" id="list-content">
+                    <!-- List items will be populated by JavaScript -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Overlay -->
+    <div class="profile-overlay" id="profileOverlay">
+      <div class="profile-backdrop"></div>
+      <div class="profile-card">
+        <header class="profile-hdr">
+          <a href="/" class="profile-logo" aria-label="Wall of Fame Home">
+            Wall of<br>Fame
+          </a>
+          <button class="profile-close-btn" aria-label="Close profile">
+            <img src="/images/back.svg" alt="Back" width="24" height="24" />
+          </button>
+        </header>
+        <main class="profile-body">
+          <div class="profile-photo-wrap">
+            <img id="profilePhoto" src="" alt="">
+          </div>
+          <div class="profile-info">
+            <h1 class="profile-name" id="profileName"></h1>
+            <p class="profile-role-label" id="profileType"></p>
+            <p class="profile-bio" id="profileBio"></p>
+            <div class="profile-meta-grid">
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Registration No.</div>
+                <div class="profile-meta-value" id="profileRegNo"></div>
+              </div>
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Department</div>
+                <div class="profile-meta-value" id="profileDepartment"></div>
+              </div>
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Type</div>
+                <div class="profile-meta-value" id="profileDurationType"></div>
+              </div>
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Duration</div>
+                <div class="profile-meta-value" id="profileDuration"></div>
+              </div>
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Stipend</div>
+                <div class="profile-meta-value" id="profileStipend"></div>
+              </div>
+              <div class="profile-meta-item">
+                <div class="profile-meta-label">Certificate</div>
+                <div class="profile-meta-value profile-link-value">
+                  <svg width="10" height="12" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.666 12.6649H0V15.3305H2.666V12.6649ZM5.332 9.9993H2.666V12.6649H5.332V9.9993ZM13.33 2.00244H10.664V4.66806H13.33V2.00244ZM10.664 2.00244H0V4.66806H10.664V2.00244ZM10.664 4.66806H13.33V15.3305H10.664V4.66806ZM7.998 7.33368H5.332V9.9993H7.998V7.33368ZM10.664 4.66806H7.998V7.33368H10.664V4.66806Z" fill="currentColor"/>
+                  </svg>
+                  Certificate of Excellence
+                </div>
+              </div>
+            </div>
+            <div class="profile-socials-block">
+              <div class="profile-socials-label">Socials</div>
+              <a href="#" class="profile-social-link" id="profileLinkedin" target="_blank" rel="noopener">
+                <svg width="10" height="12" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.666 12.6649H0V15.3305H2.666V12.6649ZM5.332 9.9993H2.666V12.6649H5.332V9.9993ZM13.33 2.00244H10.664V4.66806H13.33V2.00244ZM10.664 2.00244H0V4.66806H10.664V2.00244ZM10.664 4.66806H13.33V15.3305H10.664V4.66806ZM7.998 7.33368H5.332V9.9993H7.998V7.33368ZM10.664 4.66806H7.998V7.33368H10.664V4.66806Z" fill="currentColor"/>
+                </svg>
+                LinkedIn
+              </a>
+              <a href="#" class="profile-social-link" id="profileWebsite" target="_blank" rel="noopener">
+                <svg width="10" height="12" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.666 12.6649H0V15.3305H2.666V12.6649ZM5.332 9.9993H2.666V12.6649H5.332V9.9993ZM13.33 2.00244H10.664V4.66806H13.33V2.00244ZM10.664 2.00244H0V4.66806H10.664V2.00244ZM10.664 4.66806H13.33V15.3305H10.664V4.66806ZM7.998 7.33368H5.332V9.9993H7.998V7.33368ZM10.664 4.66806H7.998V7.33368H10.664V4.66806Z" fill="currentColor"/>
+                </svg>
+                Website
+              </a>
+            </div>
+          </div>
+        </main>
+        <footer class="profile-foot">
+          <button class="profile-next-btn">
+            Go to Next Person
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M28 14.6667H4V17.3334H28V14.6667Z" fill="currentColor"/>
+              <path d="M25.3346 12H22.668V14.6667H25.3346V12Z" fill="currentColor"/>
+              <path d="M25.3346 17.3333H22.668V19.9999H25.3346V17.3333Z" fill="currentColor"/>
+              <path d="M22.6667 9.33325H20V11.9999H22.6667V9.33325Z" fill="currentColor"/>
+              <path d="M22.6667 20H20V22.6667H22.6667V20Z" fill="currentColor"/>
+              <path d="M19.9987 6.66675H17.332V9.33341H19.9987V6.66675Z" fill="currentColor"/>
+              <path d="M17.3346 4H14.668V6.66667H17.3346V4Z" fill="currentColor"/>
+              <path d="M19.9987 22.6667H17.332V25.3334H19.9987V22.6667Z" fill="currentColor"/>
+              <path d="M17.3346 25.3333H14.668V27.9999H17.3346V25.3333Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
   </body>
 </html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Test</title>
+    <link rel="preload" href="/fonts/AtHaussMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <style>
+        @font-face {
+            font-family: 'At Hauss Mono';
+            src: url('/fonts/AtHaussMono-Regular.woff2') format('woff2'),
+                 url('/fonts/AtHaussMono-Regular.woff') format('woff'),
+                 url('/fonts/AtHaussMono-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        .test-text {
+            font-family: 'At Hauss Mono', monospace;
+            font-size: 48px;
+            padding: 20px;
+        }
+        
+        .fallback-text {
+            font-family: 'Courier New', monospace;
+            font-size: 48px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Font Test Page</h1>
+    <div class="test-text">SKY DRIFT 2024 - At Hauss Mono</div>
+    <div class="fallback-text">SKY DRIFT 2024 - Courier New (Fallback)</div>
+    
+    <script>
+        // Test font file accessibility
+        fetch('/fonts/AtHaussMono-Regular.woff2')
+            .then(response => {
+                console.log('Font file fetch status:', response.status);
+                console.log('Font file content type:', response.headers.get('content-type'));
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('Font file size:', blob.size, 'bytes');
+            })
+            .catch(err => {
+                console.error('Font file fetch failed:', err);
+            });
+        
+        document.fonts.ready.then(() => {
+            console.log('Fonts ready!');
+            console.log('At Hauss Mono available:', document.fonts.check('48px "At Hauss Mono"'));
+            console.log('All fonts:', Array.from(document.fonts).map(f => f.family));
+            
+            // Test canvas rendering with the font
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.font = '48px "At Hauss Mono"';
+            ctx.fillStyle = 'black';
+            ctx.fillText('TEST TEXT', 10, 50);
+            
+            document.body.appendChild(canvas);
+            
+            // Check actual font used
+            console.log('Canvas font set to:', ctx.font);
+        });
+        
+        // Also test font loading manually
+        document.fonts.load('48px "At Hauss Mono"').then(() => {
+            console.log('Manual font load successful');
+        }).catch(err => {
+            console.error('Manual font load failed:', err);
+        });
+    </script>
+</body>
+</html>
