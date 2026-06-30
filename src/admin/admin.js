@@ -254,6 +254,14 @@ $("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+// Whole template / add cards are clickable (not just the arrow button).
+$("templateCard")?.addEventListener("click", (e) => {
+  if (!e.target.closest("#templateBtn")) $("templateBtn").click();
+});
+$("addCard")?.addEventListener("click", (e) => {
+  if (!e.target.closest("#addBtn")) openModal(null);
+});
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
