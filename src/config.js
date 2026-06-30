@@ -37,14 +37,12 @@ const isSmallScreen =
   typeof window !== "undefined" &&
   Math.min(window.innerWidth, window.innerHeight) < 768;
 
-// Streaming card textures. Each visible student gets ONE small card texture
-// (photo + text) built on demand and kept in an LRU cache. Sizes are tuned so
-// GPU memory stays bounded regardless of how many students exist.
+// Streaming card textures. Each visible student gets ONE card texture
+// (photo + text) built on demand and kept in an LRU cache. Higher resolution
+// keeps tiles sharp when rendered large; cache limits keep GPU memory bounded.
 export const CARD = {
-  // Pixel size of each per-student card texture.
-  size: isSmallScreen ? 384 : 512,
-  // Max cards kept on the GPU at once (LRU eviction beyond this).
-  cacheLimit: isSmallScreen ? 64 : 140,
+  size: isSmallScreen ? 512 : 768,
+  cacheLimit: isSmallScreen ? 56 : 72,
 };
 
 // Initial recycled tile-mesh pool (grows automatically if a viewport ever

@@ -1,21 +1,20 @@
-// Virtualised infinite wall.
-//
-// Instead of one quad sampling a giant atlas of every photo, the wall now
-// draws only the tiles visible in the viewport (a small recycled pool of
-// textured quads) into an offscreen buffer, then post-processes that buffer
-// with barrel distortion + edge fade. Each visible student's photo+text is a
-// streamed, LRU-cached card texture. GPU memory and network therefore stay
-// bounded no matter how many students exist.
+// Virtualised infinite wall, rendered DIRECTLY to the screen (single pass) for
+// maximum sharpness. Only the cells in view are drawn (a small recycled pool
+// of subdivided quads); each visible student's photo+text is a streamed,
+// LRU-cached card texture, so GPU memory stays bounded no matter how many
+// students exist. The barrel/fisheye distortion is done per-vertex; the grid
+// lines and the dominant-color hover glow are drawn in the tile fragment
+// shader (the glow is rectangular and contained within each cell).
 
 import * as THREE from "three";
-import { WALL, COLORS, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
-import { postVertexShader, postFragmentShader } from "../shaders.js";
+import { WALL, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
+import { tileVertexShader, tileFragmentShader } from "../shaders.js";
 import { CardCache } from "./textureCache.js";
 
 const UI_SELECTOR =
   ".filters-container,.filter-toggle-btn,.list-view-wrapper,.profile-overlay,.view-toggle-container,.search-cta,.search-overlay";
 
-const BLACK = new THREE.Color(0, 0, 0);
+const HOVER_LERP = 0.18;
 
 export class Wall {
   constructor(container, onSelect) {
@@ -29,6 +28,7 @@ export class Wall {
     this.isClick = true;
     this.clickStartTime = 0;
     this.prevMouse = { x: 0, y: 0 };
+    this.pointer = null;
     this.active = [];
     this.pool = [];
   }
@@ -43,36 +43,26 @@ export class Wall {
 
     const w = this.container.offsetWidth;
     const h = this.container.offsetHeight;
-    this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(this.pixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
     this.renderer.setSize(w, h);
-    this.renderer.setClearColor(BLACK, 1);
+    this.renderer.setClearColor(new THREE.Color(0, 0, 0), 1);
     this.container.appendChild(this.renderer.domElement);
 
-    // Tile scene (flat grid) rendered into an offscreen target.
     this.scene = new THREE.Scene();
-    this.tileCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-    this.tileCamera.position.z = 10;
-    this.tileGeometry = new THREE.PlaneGeometry(WALL.cellSize, WALL.cellSize);
+    this.camera = new THREE.Camera(); // tile shader writes clip space directly
 
-    this.renderTarget = new THREE.WebGLRenderTarget(
-      Math.round(w * this.pixelRatio),
-      Math.round(h * this.pixelRatio),
-      { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }
-    );
+    // Subdivided so the per-vertex fisheye warp is smooth.
+    this.tileGeometry = new THREE.PlaneGeometry(WALL.cellSize, WALL.cellSize, 12, 12);
 
-    // Fullscreen post-process pass (distortion + fade).
-    this.postScene = new THREE.Scene();
-    this.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-    this.postCamera.position.z = 1;
-    this.postMaterial = new THREE.ShaderMaterial({
-      vertexShader: postVertexShader,
-      fragmentShader: postFragmentShader,
-      uniforms: { uScene: { value: this.renderTarget.texture } },
-    });
-    this.postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.postMaterial));
+    // Uniforms shared by every tile (updated once per frame).
+    this.shared = {
+      uOffset: { value: new THREE.Vector2(0, 0) },
+      uZoom: { value: 1 },
+      uAspect: { value: w / h },
+      uGrid: { value: new THREE.Vector4(1, 1, 1, 0.16) },
+    };
 
     this.cache = new CardCache({ size: CARD.size, limit: CARD.cacheLimit, onReady: () => {} });
 
@@ -83,11 +73,23 @@ export class Wall {
 
   growPool(target) {
     while (this.pool.length < target) {
-      const mesh = new THREE.Mesh(
-        this.tileGeometry,
-        new THREE.MeshBasicMaterial({ map: this.cache.placeholder })
-      );
+      const material = new THREE.ShaderMaterial({
+        vertexShader: tileVertexShader,
+        fragmentShader: tileFragmentShader,
+        uniforms: {
+          uOffset: this.shared.uOffset,
+          uZoom: this.shared.uZoom,
+          uAspect: this.shared.uAspect,
+          uGrid: this.shared.uGrid,
+          tMap: { value: this.cache.placeholder },
+          uAvg: { value: new THREE.Color(0, 0, 0) },
+          uHover: { value: 0 },
+        },
+      });
+      const mesh = new THREE.Mesh(this.tileGeometry, material);
+      mesh.frustumCulled = false;
       mesh.visible = false;
+      mesh.userData.hover = 0;
       this.scene.add(mesh);
       this.pool.push(mesh);
     }
@@ -100,7 +102,6 @@ export class Wall {
     }
   }
 
-  // Assign pooled tiles to the cells currently in view.
   updateVisibleTiles() {
     const w = this.container.offsetWidth;
     const h = this.container.offsetHeight;
@@ -110,24 +111,23 @@ export class Wall {
     const cs = WALL.cellSize;
     const m = WALL.cellMargin;
 
-    const left = this.offset.x - halfW;
-    const right = this.offset.x + halfW;
-    const bottom = this.offset.y - halfH;
-    const top = this.offset.y + halfH;
+    this.shared.uOffset.value.set(this.offset.x, this.offset.y);
+    this.shared.uZoom.value = this.zoom;
+    this.shared.uAspect.value = aspect;
 
-    this.tileCamera.left = left;
-    this.tileCamera.right = right;
-    this.tileCamera.top = top;
-    this.tileCamera.bottom = bottom;
-    this.tileCamera.updateProjectionMatrix();
-
-    const minX = Math.floor(left / cs) - m;
-    const maxX = Math.floor(right / cs) + m;
-    const minY = Math.floor(bottom / cs) - m;
-    const maxY = Math.floor(top / cs) + m;
+    const minX = Math.floor((this.offset.x - halfW) / cs) - m;
+    const maxX = Math.floor((this.offset.x + halfW) / cs) + m;
+    const minY = Math.floor((this.offset.y - halfH) / cs) - m;
+    const maxY = Math.floor((this.offset.y + halfH) / cs) + m;
 
     const needed = (maxX - minX + 1) * (maxY - minY + 1);
     if (needed > this.pool.length) this.growPool(needed);
+
+    this.cache.beginFrame();
+    const hoverCell =
+      this.pointer && !this.dragging
+        ? this.cellCoordsAt(this.pointer.x, this.pointer.y)
+        : null;
 
     const count = this.active.length;
     let i = 0;
@@ -136,16 +136,26 @@ export class Wall {
         const raw = (cx + cy * WALL.rowStride) % count;
         const idx = ((raw % count) + count) % count;
         const mesh = this.pool[i++];
+        const u = mesh.material.uniforms;
+
         mesh.position.set((cx + 0.5) * cs, (cy + 0.5) * cs, 0);
-        mesh.material.map = this.cache.get(this.active[idx]);
         mesh.visible = true;
+
+        const { texture, avg } = this.cache.get(this.active[idx]);
+        u.tMap.value = texture;
+        u.uAvg.value.copy(avg);
+
+        const target = hoverCell && cx === hoverCell.cx && cy === hoverCell.cy ? 1 : 0;
+        mesh.userData.hover += (target - mesh.userData.hover) * HOVER_LERP;
+        u.uHover.value = mesh.userData.hover;
       }
     }
     for (; i < this.pool.length; i++) this.pool[i].visible = false;
+    this.cache.evict();
   }
 
-  // Map client coords to the active-set index (same fisheye math as the shader).
-  indexAt(clientX, clientY) {
+  // Client coords -> (cellX, cellY) under the cursor (matches the vertex warp).
+  cellCoordsAt(clientX, clientY) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const sx = ((clientX - rect.left) / rect.width) * 2 - 1;
     const sy = -(((clientY - rect.top) / rect.height) * 2 - 1);
@@ -153,10 +163,13 @@ export class Wall {
     const d = 1 - WALL.distortionK * r2;
     const wx = sx * d * (rect.width / rect.height) * this.zoom + this.offset.x;
     const wy = sy * d * this.zoom + this.offset.y;
-    const cellX = Math.floor(wx / WALL.cellSize);
-    const cellY = Math.floor(wy / WALL.cellSize);
+    return { cx: Math.floor(wx / WALL.cellSize), cy: Math.floor(wy / WALL.cellSize) };
+  }
+
+  indexAt(clientX, clientY) {
+    const { cx, cy } = this.cellCoordsAt(clientX, clientY);
     const count = this.active.length;
-    const raw = (cellX + cellY * WALL.rowStride) % count;
+    const raw = (cx + cy * WALL.rowStride) % count;
     return ((raw % count) + count) % count;
   }
 
@@ -231,13 +244,21 @@ export class Wall {
 
     document.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("resize", () => this.resize());
+
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener("mousemove", (e) => {
+      this.pointer = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener("mouseleave", () => {
+      this.pointer = null;
+    });
   }
 
   resize() {
     const w = this.container.offsetWidth;
     const h = this.container.offsetHeight;
     this.renderer.setSize(w, h);
-    this.renderTarget.setSize(Math.round(w * this.pixelRatio), Math.round(h * this.pixelRatio));
+    this.shared.uAspect.value = w / h;
   }
 
   animate() {
@@ -248,21 +269,10 @@ export class Wall {
     this.zoom += (this.targetZoom - this.zoom) * k;
 
     if (!this.active.length) {
-      this.renderer.setRenderTarget(null);
       this.renderer.clear();
       return;
     }
-
-    this.cache.beginFrame();
     this.updateVisibleTiles();
-
-    this.renderer.setRenderTarget(this.renderTarget);
-    this.renderer.clear();
-    this.renderer.render(this.scene, this.tileCamera);
-
-    this.renderer.setRenderTarget(null);
-    this.renderer.render(this.postScene, this.postCamera);
-
-    this.cache.evict();
+    this.renderer.render(this.scene, this.camera);
   }
 }
