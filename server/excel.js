@@ -18,9 +18,16 @@ const ALIASES = {
   website: ["website", "portfolio", "url", "link"],
   certificate: ["certificate", "certificate url", "cert", "certificate link"],
   tags: ["tags", "skills"],
+  imageUrl: ["photo", "image", "photo url", "image url", "picture", "photo link", "image link", "photo url link"],
 };
 
 const norm = (h) => String(h).trim().toLowerCase();
+
+// Turn common Google Drive share links into a direct-download URL.
+const directImageUrl = (url) => {
+  const m = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);
+  return m ? `https://drive.google.com/uc?export=download&id=${m[1]}` : url;
+};
 
 const rowToStudent = (row) => {
   const lower = {};
@@ -55,6 +62,7 @@ const rowToStudent = (row) => {
     socials: { linkedin: pick("linkedin") || "#", website: pick("website") || "#" },
     certificate: pick("certificate") || "",
     tags,
+    imageUrl: pick("imageUrl") ? directImageUrl(pick("imageUrl")) : "",
   };
 };
 

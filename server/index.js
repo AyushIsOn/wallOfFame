@@ -19,7 +19,7 @@ import {
   getImageBlob,
   setImageBlob,
 } from "./students.js";
-import { processImage } from "./images.js";
+import { processImage, fetchRemoteImage } from "./images.js";
 import { parseWorkbook } from "./excel.js";
 import { generateTags } from "./tags.js";
 
@@ -104,13 +104,15 @@ app.post("/api/admin/students/:id/tags", requireAuth, wrap(async (req, res) => {
   res.json({ tags: updated.tags });
 }));
 
-// Excel/CSV import -> create students (auto-tags rows that have none).
-// Idempotent for rows with a Reg No: an existing match is updated, not duplicated.
+// Excel/CSV import -> create students (auto-tags rows that have none, and
+// fetches a Photo URL column if present). Idempotent for rows with a Reg No.
 app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   const records = parseWorkbook(req.file.buffer);
   let imported = 0;
   let updated = 0;
+  let photos = 0;
+  const photoErrors = [];
   for (const rec of records) {
     if (!rec.tags?.length && rec.bio) {
       try {
@@ -120,15 +122,20 @@ app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (re
       }
     }
     const existing = rec.regNo ? await getByRegNo(rec.regNo) : null;
-    if (existing) {
-      await updateStudent(existing.id, rec);
-      updated++;
-    } else {
-      await createStudent(rec);
-      imported++;
+    const student = existing ? (updated++, await updateStudent(existing.id, rec)) : (imported++, await createStudent(rec));
+
+    if (rec.imageUrl) {
+      try {
+        const buf = await fetchRemoteImage(rec.imageUrl);
+        const { full, thumb } = await processImage(buf);
+        await setImageBlob(student.id, full, thumb);
+        photos++;
+      } catch (e) {
+        photoErrors.push(`${rec.name}: photo ${e.message}`);
+      }
     }
   }
-  res.json({ imported, updated, total: records.length });
+  res.json({ imported, updated, total: records.length, photos, photoErrors });
 }));
 
 // ---- Static frontend ----

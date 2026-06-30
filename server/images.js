@@ -3,6 +3,16 @@
 
 import sharp from "sharp";
 
+// Fetch a remote image (e.g. from a Photo URL column) into a buffer.
+export async function fetchRemoteImage(url) {
+  if (!/^https?:\/\//i.test(url)) throw new Error("not an http(s) URL");
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`fetch failed (${res.status})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > 20 * 1024 * 1024) throw new Error("image too large");
+  return buf;
+}
+
 export async function processImage(buffer) {
   const full = await sharp(buffer)
     .rotate()

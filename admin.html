@@ -28,15 +28,23 @@
         </div>
       </header>
 
+      <!-- Primary action: upload a sheet -->
+      <section class="import-panel">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden />
+          <div class="dz-icon">⬆</div>
+          <p class="dz-title">Drop your Excel / CSV here, or click to upload</p>
+          <p class="dz-sub">One row per student — the wall fills in automatically. Only <b>Name</b> is required.</p>
+        </div>
+        <div class="import-meta">
+          <button type="button" class="btn small" id="templateBtn">⬇ Download template</button>
+          <span class="muted tiny">Columns: Name · Year · Reg No · Department · Type · Duration · Stipend · About/Bio · Tags · LinkedIn · Website · Certificate · Photo URL</span>
+        </div>
+      </section>
+
       <section class="toolbar">
         <input type="search" id="search" placeholder="Search students…" />
-        <div class="toolbar-right">
-          <label class="btn import">
-            Import Excel/CSV
-            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden />
-          </label>
-          <button id="addBtn" class="btn primary">+ Add student</button>
-        </div>
+        <button id="addBtn" class="btn">+ Add one manually</button>
       </section>
 
       <p id="status" class="status"></p>
