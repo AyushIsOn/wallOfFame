@@ -13,17 +13,30 @@ capped full image + a square thumbnail), so no separate file storage is needed.
 
 ## Deploy on Render (recommended)
 
+> **Render's free tier allows only ONE free PostgreSQL database per account.**
+> So the blueprint does **not** auto-create a database (that caused the
+> "cannot have more than one active free tier database" error). You point the
+> app at a database you create or reuse.
+
 1. Push this repo to GitHub.
-2. In Render: **New → Blueprint**, point it at the repo. `render.yaml` creates:
-   - a **Web Service** (`wall-of-fame`)
-   - a managed **PostgreSQL** database (`wall-of-fame-db`), auto-wired via `DATABASE_URL`.
-3. In the service's **Environment** settings, set:
+2. **Create / reuse a PostgreSQL** in Render:
+   - If you have no free Postgres yet: **New → PostgreSQL** (free plan).
+   - If you already have one (the free limit), you can reuse it.
+   - Copy its **Internal Database URL**.
+3. In Render: **New → Blueprint**, point it at the repo. `render.yaml` creates
+   the **Web Service** (`wall-of-fame`).
+4. In the service's **Environment** settings, set:
+   - `DATABASE_URL` — paste the Internal Database URL from step 2.
    - `ADMIN_PASSWORD` — the admin login password.
-   - (`TOKEN_SECRET` is generated for you; `DATABASE_URL` is wired automatically.)
+   - (`TOKEN_SECRET` is generated for you.)
    - `N8N_TAGS_WEBHOOK_URL` — optional (see below).
-4. Deploy. On first boot the database is created and seeded with the sample
+5. Deploy. On first boot the schema is created and seeded with the sample
    students. Open `/admin` to manage them.
 
+> If `DATABASE_URL` is left unset the server falls back to PGlite on the local
+> (ephemeral) disk — fine for a quick look, but data resets on every deploy, so
+> always set `DATABASE_URL` for a real deployment.
+>
 > Free Postgres on Render expires after ~90 days; upgrade the database plan for
 > a permanent instance.
 
