@@ -41,18 +41,16 @@ export const tileFragmentShader = `
   void main() {
     vec4 c = texture2D(tMap, vUv);
 
-    // Dominant-color hover glow: an even wash that fills the cell box and sits
-    // just inside the grid lines (contained, aligned to the cell).
-    float gx = smoothstep(0.0, 0.05, vUv.x) * smoothstep(1.0, 0.95, vUv.x);
-    float gy = smoothstep(0.0, 0.05, vUv.y) * smoothstep(1.0, 0.95, vUv.y);
-    float glow = gx * gy * uHover;
-    vec3 color = mix(uAvg * glow, c.rgb, c.a);
+    // Dominant-color hover glow: a flat, darkened wash that fills the whole
+    // cell up to the grid lines (no rounded corners, no faded edge).
+    vec3 color = mix(uAvg * (uHover * 0.55), c.rgb, c.a);
 
-    // Crisp grid lines at the cell edges.
-    float lw = 0.012;
-    float gridX = smoothstep(0.0, lw, vUv.x) * smoothstep(0.0, lw, 1.0 - vUv.x);
-    float gridY = smoothstep(0.0, lw, vUv.y) * smoothstep(0.0, lw, 1.0 - vUv.y);
-    color = mix(color, uGrid.rgb, (1.0 - gridX * gridY) * uGrid.a);
+    // Crisp grid lines (~1.5px at any cell size). Vertical and horizontal edges
+    // are computed separately so there is no diagonal derivative artifact.
+    float lx = 1.0 - smoothstep(0.0, fwidth(vUv.x) * 1.5, min(vUv.x, 1.0 - vUv.x));
+    float ly = 1.0 - smoothstep(0.0, fwidth(vUv.y) * 1.5, min(vUv.y, 1.0 - vUv.y));
+    float line = max(lx, ly);
+    color = mix(color, uGrid.rgb, line * uGrid.a);
 
     // Radial edge fade.
     float fade = 1.0 - smoothstep(${f(FADE.start)}, ${f(FADE.end)}, length(vScreen));

@@ -39,13 +39,14 @@ export const averageColor = (img) => {
   if (!n) return [0, 0, 0];
   r /= n; g /= n; b /= n;
   const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  const sat = 1.45; // boost so the glow reads as a color, not muddy gray
+  const sat = 1.2; // mild saturation lift (kept muted, not neon)
   r = lum + (r - lum) * sat;
   g = lum + (g - lum) * sat;
   b = lum + (b - lum) * sat;
-  // Brighten toward a vivid target so dark photos still glow with color.
+  // Gentle brightness normalisation so dark photos still show some color,
+  // without blowing out to a bright wash.
   const maxc = Math.max(r, g, b, 1);
-  const scale = Math.min(2.4, 205 / maxc);
+  const scale = Math.min(1.6, 165 / maxc);
   const clamp = (v) => Math.max(0, Math.min(255, v * scale)) / 255;
   return [clamp(r), clamp(g), clamp(b)];
 };
