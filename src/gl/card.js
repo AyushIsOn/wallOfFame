@@ -18,6 +18,38 @@ export const loadImage = (url) =>
 // Pick the lightest source available for the wall (thumbnail if provided).
 export const cardImageUrl = (student) => student.thumbnail || student.image;
 
+// Compute a vibrant dominant color from an image (downscale to 16x16, average
+// opaque pixels, boost saturation). Runs ONCE per student at load time.
+const avgCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+export const averageColor = (img) => {
+  if (!avgCanvas) return [0, 0, 0];
+  avgCanvas.width = avgCanvas.height = 16;
+  const ctx = avgCanvas.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, 16, 16);
+  ctx.drawImage(img, 0, 0, 16, 16);
+  const data = ctx.getImageData(0, 0, 16, 16).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 10) continue;
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+    n++;
+  }
+  if (!n) return [0, 0, 0];
+  r /= n; g /= n; b /= n;
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const sat = 1.45; // boost so the glow reads as a color, not muddy gray
+  r = lum + (r - lum) * sat;
+  g = lum + (g - lum) * sat;
+  b = lum + (b - lum) * sat;
+  // Brighten toward a vivid target so dark photos still glow with color.
+  const maxc = Math.max(r, g, b, 1);
+  const scale = Math.min(2.4, 205 / maxc);
+  const clamp = (v) => Math.max(0, Math.min(255, v * scale)) / 255;
+  return [clamp(r), clamp(g), clamp(b)];
+};
+
 // Draw `img` to cover the dst rect (center-crop, preserves aspect).
 const drawCover = (ctx, img, dx, dy, dw, dh) => {
   const scale = Math.max(dw / img.width, dh / img.height);
@@ -87,13 +119,12 @@ const drawTags = (ctx, student, size) => {
 };
 
 // Build a finished card canvas for a student given its already-loaded image.
+// The background is left TRANSPARENT so the wall can render a colored hover
+// glow behind it; the tile's default black comes from the cleared scene.
 export const drawCard = (student, img, size) => {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, size, size);
 
   // Centred photo square.
   const side = LAYOUT.imageSize * size;

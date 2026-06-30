@@ -6,7 +6,9 @@
 // network stay bounded no matter how many students exist.
 
 import * as THREE from "three";
-import { loadImage, drawCard, cardImageUrl } from "./card.js";
+import { loadImage, drawCard, cardImageUrl, averageColor } from "./card.js";
+
+const BLACK = new THREE.Color(0, 0, 0);
 
 const makeTexture = (canvas) => {
   const texture = new THREE.CanvasTexture(canvas);
@@ -15,13 +17,11 @@ const makeTexture = (canvas) => {
   return texture;
 };
 
-// A neutral placeholder shown while a card's photo is still downloading.
+// A transparent placeholder shown while a card's photo is still downloading
+// (the tile then shows the cleared black background).
 const buildPlaceholder = (size) => {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, size, size);
   return makeTexture(canvas);
 };
 
@@ -39,17 +39,17 @@ export class CardCache {
     this.frame++;
   }
 
-  // Return the best texture available for a student right now, kicking off a
-  // lazy load if needed. Never blocks.
+  // Return the best texture + dominant color for a student right now, kicking
+  // off a lazy load if needed. Never blocks.
   get(student) {
     let entry = this.entries.get(student.id);
     if (!entry) {
-      entry = { texture: null, status: "loading", frame: this.frame };
+      entry = { texture: null, avg: null, status: "loading", frame: this.frame };
       this.entries.set(student.id, entry);
       this.load(student, entry);
     }
     entry.frame = this.frame;
-    return entry.texture || this.placeholder;
+    return { texture: entry.texture || this.placeholder, avg: entry.avg || BLACK };
   }
 
   async load(student, entry) {
@@ -62,6 +62,8 @@ export class CardCache {
     for (const url of candidates) {
       try {
         const img = await loadImage(url);
+        const [r, g, b] = averageColor(img);
+        entry.avg = new THREE.Color().setRGB(r, g, b, THREE.SRGBColorSpace);
         entry.texture = makeTexture(drawCard(student, img, this.size));
         entry.status = "ready";
         this.onReady();
