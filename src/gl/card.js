@@ -66,40 +66,63 @@ const drawTitle = (ctx, student, size) => {
   const bottom = toCanvasY(LAYOUT.titleY, size);
   const mid = (top + bottom) / 2;
   const inset = LAYOUT.titleXInset * size;
-  const fontPx = Math.round(LAYOUT.titleHeight * size * 0.48);
+  const fontPx = Math.round(LAYOUT.titleHeight * size * 0.42);
 
   ctx.font = `${fontPx}px '${CANVAS_FONT}', monospace`;
   ctx.textBaseline = "middle";
-  ctx.fillStyle = COLORS.text;
 
+  // Top-left: name (white).
   ctx.textAlign = "left";
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(student.name.toUpperCase(), inset, mid);
+
+  // Top-right: year (muted).
   ctx.textAlign = "right";
-  ctx.fillText(String(student.year).toUpperCase(), size - inset, mid);
+  ctx.fillStyle = COLORS.text;
+  ctx.fillText(String(student.year || "").toUpperCase(), size - inset, mid);
 };
 
-const drawTags = (ctx, student, size) => {
-  const tags = (student.tags || []).slice(0, 4);
-  if (!tags.length) return;
+// Plain corner label sized to match the title row (used for the bottom-right).
+const labelFontPx = (size) => Math.round(LAYOUT.titleHeight * size * 0.42);
 
+const drawTags = (ctx, student, size) => {
   const top = toCanvasY(LAYOUT.tagsY + LAYOUT.tagsHeight, size);
   const bottom = toCanvasY(LAYOUT.tagsY, size);
   const mid = (top + bottom) / 2;
   const band = bottom - top;
-  const pillH = band * 0.5;
-  const fontPx = Math.round(band * 0.34);
-  const padX = fontPx * 0.75;
-  const gap = fontPx * 0.55;
+  const inset = LAYOUT.tagsXInset * size;
+
+  // Bottom-right: department (mirrors the year at top-right).
+  let rightLimit = size - inset;
+  const dept = (student.department || "").toUpperCase();
+  if (dept) {
+    ctx.font = `${labelFontPx(size)}px '${CANVAS_FONT}', monospace`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "right";
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText(dept, size - inset, mid);
+    rightLimit = size - inset - ctx.measureText(dept).width - inset;
+  }
+
+  // Bottom-left: tag pills.
+  const tags = (student.tags || []).slice(0, 4);
+  if (!tags.length) return;
+
+  const pillH = band * 0.56;
+  const fontPx = Math.round(band * 0.32);
+  const padX = fontPx * 0.7;
+  const gap = fontPx * 0.5;
   const radius = pillH / 2;
 
   ctx.font = `${fontPx}px '${CANVAS_FONT}', monospace`;
   ctx.textBaseline = "middle";
+  ctx.lineWidth = Math.max(1, size * 0.0022);
 
-  let x = LAYOUT.tagsXInset * size;
+  let x = inset;
   for (const raw of tags) {
     const tag = raw.toUpperCase();
     const w = ctx.measureText(tag).width + padX * 2;
-    if (x + w > size - LAYOUT.tagsXInset * size) break;
+    if (x + w > rightLimit) break;
 
     const y = mid - pillH / 2;
     ctx.fillStyle = "rgba(38, 38, 38, 0.92)";
@@ -107,7 +130,6 @@ const drawTags = (ctx, student, size) => {
     ctx.roundRect(x, y, w, pillH, radius);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.lineWidth = Math.max(1, size * 0.0022);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
