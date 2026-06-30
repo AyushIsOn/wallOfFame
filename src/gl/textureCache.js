@@ -13,7 +13,12 @@ const BLACK = new THREE.Color(0, 0, 0);
 const makeTexture = (canvas) => {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  // No mipmaps: sample the full-resolution card directly so text, lines and
+  // photos stay crisp (mipmaps pre-blur the texture when scaled down). This
+  // matches the original wall's filtering.
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
   return texture;
 };
 

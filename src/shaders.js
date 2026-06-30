@@ -41,10 +41,10 @@ export const tileFragmentShader = `
   void main() {
     vec4 c = texture2D(tMap, vUv);
 
-    // Dominant-color hover glow: fills the cell box, soft-fades at the edges
-    // so it stays contained within the cell (never circular/bleeding).
-    float gx = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);
-    float gy = smoothstep(0.0, 0.12, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
+    // Dominant-color hover glow: an even wash that fills the cell box and sits
+    // just inside the grid lines (contained, aligned to the cell).
+    float gx = smoothstep(0.0, 0.05, vUv.x) * smoothstep(1.0, 0.95, vUv.x);
+    float gy = smoothstep(0.0, 0.05, vUv.y) * smoothstep(1.0, 0.95, vUv.y);
     float glow = gx * gy * uHover;
     vec3 color = mix(uAvg * glow, c.rgb, c.a);
 
