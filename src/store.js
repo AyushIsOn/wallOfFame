@@ -10,11 +10,20 @@ import { CATEGORIES } from "./config.js";
 
 const TYPE_TO_CATEGORY = { RESEARCH: "research", INTERNSHIP: "internship" };
 
+// Derive the wall thumbnail path from the full-res image path.
+// "/img1.jpeg" -> "/thumbs/img1.webp". Falls back gracefully (textureCache
+// retries the full image if a thumbnail is missing).
+const toThumb = (url) => {
+  const base = url.split("/").pop().replace(/\.[^.]+$/, "");
+  return `/thumbs/${base}.webp`;
+};
+
 // Map a raw record to the stable shape the UI consumes.
 const normalize = (raw, i) => ({
   id: i,
   name: raw.title,
-  image: raw.image,
+  image: raw.image, // full-res, used by the profile
+  thumbnail: raw.thumbnail || toThumb(raw.image), // lightweight, used by the wall
   year: raw.year,
   regNo: raw.regNo,
   department: raw.department,
@@ -39,7 +48,13 @@ if (typeof window !== "undefined") {
     const base = students;
     students = Array.from({ length: seed }, (_, i) => {
       const b = base[i % base.length];
-      return { ...b, id: i, name: `${b.name} #${i + 1}`, image: `${b.image}?v=${i}` };
+      return {
+        ...b,
+        id: i,
+        name: `${b.name} #${i + 1}`,
+        image: `${b.image}?v=${i}`,
+        thumbnail: `${b.thumbnail}?v=${i}`,
+      };
     });
   }
 }

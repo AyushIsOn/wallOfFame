@@ -58,15 +58,24 @@ export class CardCache {
   }
 
   async load(student, entry) {
-    try {
-      const img = await loadImage(cardImageUrl(student));
-      const canvas = drawCard(student, img, this.size);
-      entry.texture = makeTexture(canvas);
-      entry.status = "ready";
-      this.onReady();
-    } catch (_) {
-      entry.status = "error"; // keep showing the placeholder
+    // Prefer the thumbnail; fall back to the full-res image if the thumbnail
+    // is missing (e.g. a freshly-added student before the pipeline runs).
+    const candidates = [cardImageUrl(student)];
+    if (student.image && student.image !== cardImageUrl(student)) {
+      candidates.push(student.image);
     }
+    for (const url of candidates) {
+      try {
+        const img = await loadImage(url);
+        entry.texture = makeTexture(drawCard(student, img, this.size));
+        entry.status = "ready";
+        this.onReady();
+        return;
+      } catch (_) {
+        /* try the next source */
+      }
+    }
+    entry.status = "error"; // keep showing the placeholder
   }
 
   // Dispose least-recently-used cards beyond the limit (never the ones used
