@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wall of Fame — Admin</title>
+    <link rel="stylesheet" href="/src/admin/admin.css" />
+  </head>
+  <body>
+    <!-- Login -->
+    <div id="login" class="login">
+      <form id="loginForm" class="login-box">
+        <h1>Wall of Fame</h1>
+        <p class="muted">Admin access</p>
+        <input type="password" id="password" placeholder="Admin password" autocomplete="current-password" />
+        <button type="submit">Sign in</button>
+        <p id="loginError" class="error"></p>
+      </form>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="app" hidden>
+      <header class="topbar">
+        <div class="brand">Wall of Fame <span>Admin</span></div>
+        <div class="topbar-actions">
+          <a href="/" target="_blank" class="ghost">View wall ↗</a>
+          <button id="logout" class="ghost">Log out</button>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <input type="search" id="search" placeholder="Search students…" />
+        <div class="toolbar-right">
+          <label class="btn import">
+            Import Excel/CSV
+            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden />
+          </label>
+          <button id="addBtn" class="btn primary">+ Add student</button>
+        </div>
+      </section>
+
+      <p id="status" class="status"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th><th>Name</th><th>Dept</th><th>Year</th><th>Type</th><th>Tags</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Edit / Add modal -->
+    <div id="modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card">
+        <header class="modal-head">
+          <h2 id="modalTitle">Edit student</h2>
+          <button class="ghost" data-close>✕</button>
+        </header>
+        <div class="modal-body">
+          <div class="photo-col">
+            <div class="photo-preview"><img id="photoPreview" alt="" /></div>
+            <label class="btn small">
+              Upload photo
+              <input type="file" id="photoFile" accept="image/*" hidden />
+            </label>
+            <p class="muted tiny">JPG/PNG — auto-resized + thumbnailed</p>
+          </div>
+          <form id="studentForm" class="fields">
+            <input type="hidden" id="f_id" />
+            <label>Name<input id="f_name" required /></label>
+            <div class="row">
+              <label>Department<input id="f_department" placeholder="CSE" /></label>
+              <label>Year<input id="f_year" type="number" placeholder="2025" /></label>
+            </div>
+            <div class="row">
+              <label>Type<input id="f_type" placeholder="INTERNSHIP / RESEARCH" /></label>
+              <label>Reg No.<input id="f_regNo" /></label>
+            </div>
+            <div class="row">
+              <label>Duration<input id="f_duration" placeholder="6 MONTHS" /></label>
+              <label>Stipend<input id="f_stipend" /></label>
+            </div>
+            <label>About / Bio<textarea id="f_bio" rows="4"></textarea></label>
+            <label>
+              Tags (comma separated)
+              <span class="tags-row">
+                <input id="f_tags" placeholder="AI, ML, DESIGN" />
+                <button type="button" id="genTags" class="btn small">Generate</button>
+              </span>
+            </label>
+            <div class="row">
+              <label>LinkedIn<input id="f_linkedin" placeholder="https://…" /></label>
+              <label>Website<input id="f_website" placeholder="https://…" /></label>
+            </div>
+            <label>Certificate URL<input id="f_certificate" placeholder="https://…" /></label>
+          </form>
+        </div>
+        <footer class="modal-foot">
+          <button id="deleteBtn" class="ghost danger">Delete</button>
+          <div>
+            <button class="ghost" data-close>Cancel</button>
+            <button id="saveBtn" class="btn primary">Save</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <script type="module" src="/src/admin/admin.js"></script>
+  </body>
+</html>

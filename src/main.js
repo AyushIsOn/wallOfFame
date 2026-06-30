@@ -42,6 +42,9 @@ const start = async () => {
 
   apply(store.getFiltered());
   store.subscribe(apply);
+
+  // Render the static dataset immediately, then swap in live data from the API.
+  store.load();
 };
 
 start();

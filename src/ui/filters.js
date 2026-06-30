@@ -7,11 +7,11 @@ import { store } from "../store.js";
 const pill = (type, value, text, active = false) =>
   `<button class="filter-pill${active ? " active" : ""}" data-type="${type}" data-filter="${value}">${text}</button>`;
 
-const renderPills = (container, type, values) => {
+const renderPills = (container, type, values, activeValue) => {
   if (!container) return;
   container.innerHTML =
-    pill(type, "all", "ALL", true) +
-    values.map((v) => pill(type, v, String(v).toUpperCase())).join("");
+    pill(type, "all", "ALL", activeValue === "all") +
+    values.map((v) => pill(type, v, String(v).toUpperCase(), String(activeValue) === String(v))).join("");
 };
 
 export const initFilters = () => {
@@ -19,9 +19,16 @@ export const initFilters = () => {
   const panel = document.querySelector(".filters-container");
   if (!panel || !toggleBtn) return;
 
-  renderPills(panel.querySelector('[data-type="category"]'), "category", store.options.categories);
-  renderPills(panel.querySelector('[data-type="department"]'), "department", store.options.departments);
-  renderPills(panel.querySelector('[data-type="year"]'), "year", store.options.years);
+  const buildAll = () => {
+    const s = store.getState();
+    renderPills(panel.querySelector('[data-type="category"]'), "category", store.options.categories, s.category);
+    renderPills(panel.querySelector('[data-type="department"]'), "department", store.options.departments, s.department);
+    renderPills(panel.querySelector('[data-type="year"]'), "year", store.options.years, s.year);
+  };
+
+  buildAll();
+  // Rebuild when live data arrives (new departments/years), keeping selection.
+  store.onData(buildAll);
 
   // Stop drags starting on the panel from panning the wall.
   panel.addEventListener("mousedown", (e) => e.stopPropagation());

@@ -46,7 +46,7 @@ export const initListView = (onSelect) => {
     const link = e.target.closest(".student-link");
     if (!link) return;
     e.preventDefault();
-    const student = store.students[Number(link.dataset.id)];
+    const student = store.byId(link.dataset.id);
     if (student) onSelect(student);
   });
 
