@@ -14,8 +14,19 @@ const escapeHtml = (str) =>
     "'": "&#39;",
   })[c]);
 
-// One row: name (left) + tag pills (center) + department (right)
-const rowHtml = (s) => `
+// One row: name (left) | pills (middle, left-aligned) | department (right).
+// The leading pill is the student's type/category (INTERNSHIP, RESEARCH, …)
+// shown outlined — like the "EXPERIENCE" pill in the reference — followed by
+// the n8n-generated tags as normal filled pills.
+const rowHtml = (s) => {
+  const typePill = s.type
+    ? `<span class="accomplishment-pill type-pill">${escapeHtml(s.type)}</span>`
+    : "";
+  const tagPills = s.tags
+    .slice(0, 3)
+    .map((t) => `<span class="accomplishment-pill">${escapeHtml(t)}</span>`)
+    .join("");
+  return `
   <li class="student-list-item-wrapper">
     <a href="#" class="student-link" data-id="${s.id}">
       <div class="student-info">
@@ -23,10 +34,7 @@ const rowHtml = (s) => `
       </div>
       <div class="student-meta-info">
         <div class="accomplishment-tags">
-          ${s.tags
-            .slice(0, 3)
-            .map((t) => `<span class="accomplishment-pill">${escapeHtml(t)}</span>`)
-            .join("")}
+          ${typePill}${tagPills}
         </div>
       </div>
       <div class="student-branch">
@@ -34,6 +42,7 @@ const rowHtml = (s) => `
       </div>
     </a>
   </li>`;
+};
 
 // Group students by year (descending), with ungrouped ("—") at the end.
 const groupByYear = (students) => {

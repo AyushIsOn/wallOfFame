@@ -947,7 +947,13 @@ body.list-open .gradient-blur-bg {
 .project-list-container {
   margin: 0 auto;
   max-width: 1400px;
-  padding-top: 6rem;
+  padding-top: 20vh;
+}
+
+@media (min-width: 1024px) {
+  .project-list-container {
+    padding-top: 30vh;
+  }
 }
 
 .header {
@@ -955,7 +961,9 @@ body.list-open .gradient-blur-bg {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-bottom: 5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  padding-bottom: 1.1rem;
+  margin-bottom: 3rem;
 }
 
 .header h2 {
@@ -985,7 +993,7 @@ body.list-open .gradient-blur-bg {
 @media (min-width: 1440px) {
   .header {
     gap: 18px;
-    margin-bottom: 7rem;
+    margin-bottom: 3.5rem;
   }
 
   .header h2 {
@@ -1111,7 +1119,7 @@ body.list-open .gradient-blur-bg {
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: grid;
-  grid-template-columns: 1fr 2fr auto;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr) auto;
   height: fit-content;
   min-height: 40px;
   padding: 9px 0;
@@ -1131,7 +1139,7 @@ body.list-open .gradient-blur-bg {
 
 @media (min-width: 768px) {
   .student-link {
-    grid-template-columns: 1fr 140px;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) auto;
     padding: 10px 0;
     min-height: 36px;
   }
@@ -1139,8 +1147,9 @@ body.list-open .gradient-blur-bg {
 
 @media (min-width: 1024px) {
   .student-link {
-    grid-template-columns: 0.8fr 1.2fr;
+    grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.3fr) auto;
     padding: 12px 0;
+    gap: 1.5rem;
   }
 }
 
@@ -1311,60 +1320,67 @@ body.list-open .gradient-blur-bg {
   }
 }
 
-/* Accomplishment Tags Styling */
+/* Tag pills: n8n-generated tags are filled; the leading type pill is outlined. */
 .accomplishment-tags {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .accomplishment-pill {
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid transparent;
   border-radius: 14px;
   padding: 3px 10px;
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
   font-size: 0.58rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  flex-shrink: 0;
 }
 
-.accomplishment-pill:hover {
-  background: rgba(0, 0, 0, 0.7);
-  border-color: rgba(255, 255, 255, 0.3);
+/* Leading category/type pill (INTERNSHIP, RESEARCH, HACKATHON…) — outlined,
+   mirroring the "EXPERIENCE" pill in the reference design. */
+.accomplishment-pill.type-pill {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
 }
 
-/* Update student meta info layout */
+/* Tags column: a single left-aligned row of pills. */
 .student-meta-info {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 0.5rem;
   align-items: center;
-  flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow: hidden;
 }
 
+/* Department column: right-aligned at the row's end. */
 .student-branch {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 80px;
+  min-width: 60px;
 }
 
 .student-organization {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.82rem;
   text-align: right;
   margin: 0;
-  font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Empty state for list view */
