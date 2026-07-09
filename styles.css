@@ -38,6 +38,15 @@
   font-display: swap;
 }
 
+/* Rokkitt (variable slab serif) — used for the profile name + bio. */
+@font-face {
+  font-family: 'Rokkitt';
+  src: url('/fonts/Rokkitt.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -406,16 +415,16 @@ body.list-open .gradient-blur-bg {
 }
 
 .link-arrow {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   fill: rgba(255, 255, 255, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (min-width: 1024px) {
   .link-arrow {
-    width: 14px;
-    height: 14px;
+    width: 10px;
+    height: 10px;
   }
 }
 
@@ -1549,13 +1558,13 @@ body.list-open .gradient-blur-bg {
 }
 
 .profile-name {
-  font-family: 'Klim Font', Georgia, serif;
+  font-family: 'Rokkitt', Georgia, serif;
   font-size: clamp(40px, 10.5%, 84px);
-  font-weight: 400;
+  font-weight: 500;
   color: #fff;
   line-height: 1.0;
-  letter-spacing: -1.5px;
-  margin-bottom: 3%;
+  letter-spacing: -0.5px;
+  margin-bottom: 0.5rem;
 }
 
 .profile-role-label {
@@ -1564,13 +1573,14 @@ body.list-open .gradient-blur-bg {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #9a9a9a;
-  margin-bottom: 2%;
+  margin-bottom: 1.6rem;
 }
 
 .profile-bio {
-  font-family: 'Klim Font', Georgia, serif;
-  font-size: clamp(13px, 2.4%, 22px);
-  line-height: 1.55;
+  font-family: 'Rokkitt', Georgia, serif;
+  font-size: clamp(15px, 2.6%, 24px);
+  font-weight: 400;
+  line-height: 1.5;
   color: #c6c6c6;
   margin-bottom: 8%;
   max-width: 92%;
@@ -1609,6 +1619,8 @@ body.list-open .gradient-blur-bg {
 
 .profile-link-value svg {
   flex-shrink: 0;
+  width: 7px;
+  height: auto;
   opacity: 0.7;
 }
 
@@ -1623,18 +1635,18 @@ body.list-open .gradient-blur-bg {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #8f8f8f;
-  margin-bottom: 4%;
+  margin-bottom: 0.75rem;
 }
 
 .profile-social-link {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   font-family: 'At Hauss Mono', monospace;
   font-size: clamp(11px, 1.8%, 16px);
   color: #fff;
   text-decoration: none;
-  margin-bottom: 3.5%;
+  margin-bottom: 0.5rem;
   letter-spacing: 0.3px;
   transition: opacity 0.2s;
 }
@@ -1645,6 +1657,8 @@ body.list-open .gradient-blur-bg {
 
 .profile-social-link svg {
   flex-shrink: 0;
+  width: 7px;
+  height: auto;
   opacity: 0.75;
 }
 
@@ -1826,7 +1840,7 @@ body.list-open .gradient-blur-bg {
    CERTIFICATE LINK STATE
    ============================== */
 #profileCertificate {
-  color: inherit;
+  color: #fff;
   text-decoration: none;
   cursor: pointer;
   transition: opacity 0.2s ease;
@@ -1837,7 +1851,8 @@ body.list-open .gradient-blur-bg {
 }
 
 #profileCertificate.is-disabled {
-  opacity: 0.45;
+  color: #8f8f8f;
+  opacity: 0.7;
   pointer-events: none;
   cursor: default;
 }
