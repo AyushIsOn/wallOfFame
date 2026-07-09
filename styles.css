@@ -475,7 +475,7 @@ body.list-open .gradient-blur-bg {
   border-radius: 44px;
   position: absolute;
   transition: transform 0.7s cubic-bezier(0.93, -0.24, 0.4, 1.17);
-  height: calc(50% - 3px);
+  height: calc(50% - 6px);
   width: calc(100% - 12px);
   left: 6px;
   top: 6px;
@@ -484,7 +484,7 @@ body.list-open .gradient-blur-bg {
 
 /* Active state moves highlight */
 .view-toggle:has(.toggle-option-container:nth-child(3).active) .toggle-highlight {
-  transform: translateY(calc(100% + 6px));
+  transform: translateY(100%);
 }
 
 /* Desktop Styles */
@@ -502,13 +502,13 @@ body.list-open .gradient-blur-bg {
   
   .toggle-highlight {
     height: calc(100% - 12px);
-    width: calc(50% - 3px);
+    width: calc(50% - 6px);
     transform: translateX(0);
     border-radius: 34px;
   }
   
   .view-toggle:has(.toggle-option-container:nth-child(3).active) .toggle-highlight {
-    transform: translateX(calc(100% + 6px));
+    transform: translateX(100%);
   }
 }
 
@@ -1016,6 +1016,12 @@ body.list-open .gradient-blur-bg {
   grid-template-columns: 1fr 3fr;
   margin-bottom: 3rem;
   gap: 1rem;
+}
+
+/* The first group sits right below the header's divider line, so drop its
+   own top border to avoid a redundant double line. */
+.student-group:first-child {
+  border-top: none;
 }
 
 @media (min-width: 768px) {
