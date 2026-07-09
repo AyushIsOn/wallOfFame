@@ -139,7 +139,9 @@
             Wall of<br>Fame
           </a>
           <button class="profile-close-btn" aria-label="Close profile">
-            <img src="/images/back.svg" alt="Back" width="24" height="24" />
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
           </button>
         </header>
         <main class="profile-body">
@@ -147,9 +149,12 @@
             <img id="profilePhoto" src="" alt="">
           </div>
           <div class="profile-info">
-            <h1 class="profile-name" id="profileName"></h1>
-            <p class="profile-role-label" id="profileType"></p>
-            <p class="profile-bio" id="profileBio"></p>
+            <div class="profile-info-top">
+              <h1 class="profile-name" id="profileName"></h1>
+              <p class="profile-role-label" id="profileType"></p>
+              <p class="profile-bio" id="profileBio"></p>
+            </div>
+            <div class="profile-info-bottom">
             <div class="profile-meta-grid">
               <div class="profile-meta-item">
                 <div class="profile-meta-label">Registration No.</div>
@@ -195,6 +200,7 @@
                 </svg>
                 Website
               </a>
+            </div>
             </div>
           </div>
         </main>

@@ -25,6 +25,13 @@ export const initProfileOverlay = () => {
     if (el) el.textContent = value ?? "";
   };
 
+  // Format a purely-numeric stipend as an amount (₹4,00,000); leave anything
+  // else (e.g. "Unpaid", already-formatted strings) untouched.
+  const formatStipend = (v) => {
+    const raw = String(v ?? "").trim();
+    return /^\d+$/.test(raw) ? `₹${Number(raw).toLocaleString("en-IN")}` : raw;
+  };
+
   const fill = (s) => {
     const photo = document.getElementById("profilePhoto");
     if (photo) {
@@ -40,7 +47,7 @@ export const initProfileOverlay = () => {
     setText("profileDepartment", s.department);
     setText("profileDurationType", s.type);
     setText("profileDuration", s.duration);
-    setText("profileStipend", s.stipend);
+    setText("profileStipend", formatStipend(s.stipend));
 
     const linkedin = document.getElementById("profileLinkedin");
     if (linkedin) linkedin.href = s.socials.linkedin || "#";
