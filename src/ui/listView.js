@@ -67,7 +67,6 @@ export const initListView = (onSelect) => {
           <div class="project-list-container">
             <div class="header">
               <h2>All Students</h2>
-              <h3>0 students</h3>
             </div>
             <div class="projects-container">
               <p class="list-empty">No students match these filters.</p>
@@ -96,7 +95,7 @@ export const initListView = (onSelect) => {
         <div class="project-list-container">
           <div class="header">
             <h2>All Students</h2>
-            <h3>${students.length} student${students.length !== 1 ? "s" : ""}</h3>
+            <span class="student-count">${students.length} student${students.length !== 1 ? "s" : ""}</span>
           </div>
           <div class="projects-container">
             ${groupsHtml}

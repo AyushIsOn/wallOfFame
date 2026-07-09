@@ -18,10 +18,14 @@ export const initViewToggle = () => {
         listWrapper.classList.remove("hidden");
       });
       gallery.style.display = "none";
+      // Strengthen the header blur/darkening so list text scrolling behind
+      // the fixed "Wall of Fame" logo stays readable.
+      document.body.classList.add("list-open");
     } else {
       listWrapper.classList.remove("is-open");
       listWrapper.classList.add("hidden");
       gallery.style.display = "block";
+      document.body.classList.remove("list-open");
       setTimeout(() => {
         if (current === "wall") listWrapper.style.display = "none";
       }, 300);
