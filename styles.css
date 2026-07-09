@@ -391,7 +391,7 @@ body.list-open .gradient-blur-bg {
 
 .get-featured-link {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 4px;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
@@ -417,7 +417,7 @@ body.list-open .gradient-blur-bg {
 .link-arrow {
   width: 9px;
   height: 9px;
-  margin-top: 0.15em;
+  margin-bottom: 0.15em;
   flex-shrink: 0;
   fill: rgba(255, 255, 255, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
