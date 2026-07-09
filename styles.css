@@ -1438,7 +1438,6 @@ body.list-open .gradient-blur-bg {
   position: relative;
   background: #1c1c1c;
   width: min(90vw, 1200px);
-  aspect-ratio: 16 / 10;
   max-height: 90vh;
   overflow: hidden;
   display: grid;
@@ -1530,7 +1529,7 @@ body.list-open .gradient-blur-bg {
 .profile-info {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0;
   padding-top: 0.5%;
   height: 100%;
@@ -1571,10 +1570,10 @@ body.list-open .gradient-blur-bg {
 .profile-bio {
   font-family: 'Klim Font', Georgia, serif;
   font-size: clamp(13px, 2.4%, 22px);
-  line-height: 1.5;
-  color: #b5b5b5;
-  margin-bottom: 6%;
-  max-width: 90%;
+  line-height: 1.55;
+  color: #c6c6c6;
+  margin-bottom: 8%;
+  max-width: 92%;
 }
 
 /* ── 2-column metadata grid ── */
@@ -1689,7 +1688,6 @@ body.list-open .gradient-blur-bg {
 @media (max-width: 767px) {
   .profile-card {
     width: 95vmin;
-    aspect-ratio: 16 / 10;
     height: auto;
   }
 
