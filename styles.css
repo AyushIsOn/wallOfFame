@@ -203,6 +203,20 @@ header.header-bar button {
   top: 0;
 }
 
+/* In list view, strengthen the top blur/darkening so the list heading and
+   rows stay readable as they scroll behind the fixed "Wall of Fame" logo. */
+body.list-open .gradient-blur-bg {
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.85) 45%,
+    rgba(0, 0, 0, 0.55) 72%,
+    transparent 100%
+  );
+}
+
 /* Logo Container */
 .logo-container {
   align-items: center;
@@ -939,38 +953,48 @@ header.header-bar button {
 .header {
   align-items: baseline;
   display: flex;
-  gap: 16px;
-  margin-bottom: 4rem;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 3rem;
 }
 
-.header h2,
-.header h3 {
-  font-size: 28px;
-  line-height: 24px;
+.header h2 {
+  font-size: 24px;
+  line-height: 1.1;
   margin: 0;
-  margin-bottom: 8px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
 }
 
-.header h3 {
+.student-count {
   color: rgba(255, 255, 255, 0.4);
+  font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
   font-weight: 400;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+  .header h2 {
+    font-size: 30px;
+  }
 }
 
 @media (min-width: 1440px) {
   .header {
-    display: flex;
-    align-items: baseline;
-    gap: 24px;
+    gap: 18px;
+    margin-bottom: 3.5rem;
   }
-  
-  .header h2,
-  .header h3 {
-    font-size: 56px;
-    line-height: 52px;
+
+  .header h2 {
+    font-size: 40px;
+    line-height: 1.05;
   }
-  
-  .header h3 {
-    margin-inline-start: -0.05em;
+
+  .student-count {
+    font-size: 0.9rem;
   }
 }
 
@@ -1051,7 +1075,7 @@ header.header-bar button {
   position: relative;
   width: 100%;
   margin: 0;
-  border-radius: 16px;
+  border-radius: 0;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1070,18 +1094,17 @@ header.header-bar button {
   transform-origin: bottom;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
-  border-radius: 16px;
+  border-radius: 0;
   z-index: 0;
 }
 
 .student-list-item-wrapper:hover {
-  transform: translateY(-2px);
-  border-radius: 20px;
+  border-radius: 0;
 }
 
 .student-list-item-wrapper:hover:after {
   transform: scaleY(1);
-  border-radius: 20px;
+  border-radius: 0;
 }
 
 .student-link {
