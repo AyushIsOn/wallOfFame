@@ -391,7 +391,7 @@ body.list-open .gradient-blur-bg {
 
 .get-featured-link {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
@@ -417,6 +417,8 @@ body.list-open .gradient-blur-bg {
 .link-arrow {
   width: 9px;
   height: 9px;
+  margin-top: 0.15em;
+  flex-shrink: 0;
   fill: rgba(255, 255, 255, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1494,19 +1496,19 @@ body.list-open .gradient-blur-bg {
   flex-shrink: 0;
 }
 
-.profile-close-btn svg {
-  width: 44%;
-  height: 44%;
-  color: rgba(255, 255, 255, 0.6);
-  transition: color 0.2s;
+.profile-close-btn img {
+  width: 52%;
+  height: 52%;
+  filter: brightness(0) invert(0.62);
+  transition: filter 0.2s;
 }
 
 .profile-close-btn:hover {
   background: #2a2a2a;
 }
 
-.profile-close-btn:hover svg {
-  color: #fff;
+.profile-close-btn:hover img {
+  filter: brightness(0) invert(1);
 }
 
 /* ── Body (photo + info side by side) ── */
@@ -1543,6 +1545,7 @@ body.list-open .gradient-blur-bg {
   padding-top: 0.5%;
   height: 100%;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* Hero group (top) and data group (bottom) so the right column fills the
@@ -1582,7 +1585,7 @@ body.list-open .gradient-blur-bg {
   font-weight: 400;
   line-height: 1.5;
   color: #c6c6c6;
-  margin-bottom: 8%;
+  margin-bottom: 1.75rem;
   max-width: 92%;
 }
 
@@ -1590,9 +1593,9 @@ body.list-open .gradient-blur-bg {
 .profile-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  row-gap: 6%;
+  row-gap: 1.3rem;
   column-gap: 8%;
-  margin-bottom: 6%;
+  margin-bottom: 1.75rem;
 }
 
 .profile-meta-label {
@@ -1601,7 +1604,7 @@ body.list-open .gradient-blur-bg {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #8f8f8f;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .profile-meta-value {
@@ -1851,8 +1854,8 @@ body.list-open .gradient-blur-bg {
 }
 
 #profileCertificate.is-disabled {
-  color: #8f8f8f;
-  opacity: 0.7;
+  color: #fff;
+  opacity: 0.9;
   pointer-events: none;
   cursor: default;
 }
