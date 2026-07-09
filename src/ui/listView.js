@@ -1,5 +1,7 @@
-// List view: a text rendering of the (filtered) students. Clicking a row opens
-// that student's profile. Uses real department + tags from the data.
+// List view: year-grouped, phantom.land-inspired layout.
+// Big "All Students" heading + count, then students grouped by year (descending).
+// Each group: sticky year label on the left, rows on the right.
+// Clicking a row opens that student's profile overlay.
 
 import { store } from "../store.js";
 
@@ -12,6 +14,7 @@ const escapeHtml = (str) =>
     "'": "&#39;",
   })[c]);
 
+// One row: name (left) + tag pills (center) + department (right)
 const rowHtml = (s) => `
   <li class="student-list-item-wrapper">
     <a href="#" class="student-link" data-id="${s.id}">
@@ -27,22 +30,83 @@ const rowHtml = (s) => `
         </div>
       </div>
       <div class="student-branch">
-        <p class="student-organization">${escapeHtml(s.department)}</p>
+        <p class="student-organization">${escapeHtml(s.department || "")}</p>
       </div>
     </a>
   </li>`;
 
+// Group students by year (descending), with ungrouped ("—") at the end.
+const groupByYear = (students) => {
+  const groups = new Map();
+  for (const s of students) {
+    const key = s.year || "—";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  // Sort year keys descending (numeric), push non-numeric to end
+  const sorted = [...groups.entries()].sort((a, b) => {
+    const na = Number(a[0]);
+    const nb = Number(b[0]);
+    if (isNaN(na) && isNaN(nb)) return 0;
+    if (isNaN(na)) return 1;
+    if (isNaN(nb)) return -1;
+    return nb - na;
+  });
+  return sorted;
+};
+
 export const initListView = (onSelect) => {
-  const listContent = document.getElementById("list-content");
+  const container = document.getElementById("listViewContainer");
 
   const render = (students) => {
-    if (!listContent) return;
-    listContent.innerHTML = students.length
-      ? students.map(rowHtml).join("")
-      : `<li class="list-empty">No students match these filters.</li>`;
+    if (!container) return;
+
+    if (!students.length) {
+      container.innerHTML = `
+        <div class="project-list-wrapper">
+          <div class="project-list-container">
+            <div class="header">
+              <h2>All Students</h2>
+              <h3>0 students</h3>
+            </div>
+            <div class="projects-container">
+              <p class="list-empty">No students match these filters.</p>
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const groups = groupByYear(students);
+
+    const groupsHtml = groups
+      .map(
+        ([year, items]) => `
+      <div class="student-group">
+        <p>${escapeHtml(String(year))}</p>
+        <ul class="student-list-items-wrapper">
+          ${items.map(rowHtml).join("")}
+        </ul>
+      </div>`
+      )
+      .join("");
+
+    container.innerHTML = `
+      <div class="project-list-wrapper">
+        <div class="project-list-container">
+          <div class="header">
+            <h2>All Students</h2>
+            <h3>${students.length} student${students.length !== 1 ? "s" : ""}</h3>
+          </div>
+          <div class="projects-container">
+            ${groupsHtml}
+          </div>
+        </div>
+      </div>`;
   };
 
-  listContent?.addEventListener("click", (e) => {
+  // Event delegation for row clicks
+  container?.addEventListener("click", (e) => {
     const link = e.target.closest(".student-link");
     if (!link) return;
     e.preventDefault();
