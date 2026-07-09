@@ -937,7 +937,7 @@ header.header-bar button {
 }
 
 .header {
-  align-items: flex-end;
+  align-items: baseline;
   display: flex;
   gap: 16px;
   margin-bottom: 4rem;
@@ -953,13 +953,14 @@ header.header-bar button {
 
 .header h3 {
   color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
 }
 
 @media (min-width: 1440px) {
   .header {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
   }
   
   .header h2,
@@ -1341,6 +1342,16 @@ header.header-bar button {
   margin: 0;
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
   font-weight: 500;
+}
+
+/* Empty state for list view */
+.list-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
+  font-size: 1rem;
+  text-align: center;
+  padding: 4rem 2rem;
+  margin: 0;
 }
 
 @media (min-width: 768px) {
