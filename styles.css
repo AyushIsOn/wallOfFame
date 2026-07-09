@@ -1486,19 +1486,19 @@ body.list-open .gradient-blur-bg {
   flex-shrink: 0;
 }
 
-.profile-close-btn img {
-  width: 60%;
-  height: 60%;
-  filter: brightness(0) invert(0.6);
-  transition: filter 0.2s;
+.profile-close-btn svg {
+  width: 44%;
+  height: 44%;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.2s;
 }
 
 .profile-close-btn:hover {
   background: #2a2a2a;
 }
 
-.profile-close-btn:hover img {
-  filter: brightness(0) invert(1);
+.profile-close-btn:hover svg {
+  color: #fff;
 }
 
 /* ── Body (photo + info side by side) ── */
@@ -1506,14 +1506,16 @@ body.list-open .gradient-blur-bg {
   display: grid;
   grid-template-columns: 42% 1fr;
   gap: 0 6%;
-  align-items: start;
+  align-items: stretch;
   padding: 4% 5.2% 0;
   overflow: hidden;
+  min-height: 0;
 }
 
 .profile-photo-wrap {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1528,8 +1530,23 @@ body.list-open .gradient-blur-bg {
 .profile-info {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 0;
   padding-top: 0.5%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Hero group (top) and data group (bottom) so the right column fills the
+   full card height and its bottom lines up with the photo — no dead gap. */
+.profile-info-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-info-bottom {
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-name {
@@ -1547,7 +1564,7 @@ body.list-open .gradient-blur-bg {
   font-size: clamp(10px, 1.6%, 14px);
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #6b6b6b;
+  color: #9a9a9a;
   margin-bottom: 2%;
 }
 
@@ -1574,7 +1591,7 @@ body.list-open .gradient-blur-bg {
   font-size: clamp(10px, 1.5%, 14px);
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #5c5c5c;
+  color: #8f8f8f;
   margin-bottom: 6px;
 }
 
@@ -1606,7 +1623,7 @@ body.list-open .gradient-blur-bg {
   font-size: clamp(10px, 1.5%, 14px);
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #5c5c5c;
+  color: #8f8f8f;
   margin-bottom: 4%;
 }
 
@@ -1641,29 +1658,31 @@ body.list-open .gradient-blur-bg {
 }
 
 .profile-next-btn {
-  background: #fff;
-  color: #000;
-  border: none;
-  padding: clamp(14px, 2.6%, 24px) clamp(22px, 4.5%, 38px);
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: clamp(12px, 2.2%, 20px) clamp(20px, 4%, 34px);
   font-family: 'At Hauss Mono', monospace;
-  font-size: clamp(11px, 1.8%, 15px);
+  font-size: clamp(11px, 1.7%, 14px);
   letter-spacing: 1.5px;
   text-transform: uppercase;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: clamp(10px, 2%, 18px);
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
   white-space: nowrap;
 }
 
 .profile-next-btn:hover {
-  background: #e0e0e0;
+  background: #fff;
+  color: #000;
+  border-color: #fff;
 }
 
 .profile-next-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 /* ── Mobile adjustments ── */
@@ -1679,11 +1698,19 @@ body.list-open .gradient-blur-bg {
     gap: 5% 0;
     padding: 3% 5.2% 0;
     overflow-y: auto;
+    align-items: start;
   }
 
   .profile-photo-wrap {
     aspect-ratio: 2 / 1;
+    height: auto;
     max-height: 40vmin;
+  }
+
+  .profile-info {
+    justify-content: flex-start;
+    height: auto;
+    gap: 6% 0;
   }
 
   .profile-bio {
