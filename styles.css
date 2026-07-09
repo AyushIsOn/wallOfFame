@@ -955,7 +955,7 @@ body.list-open .gradient-blur-bg {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-bottom: 3rem;
+  margin-bottom: 5rem;
 }
 
 .header h2 {
@@ -985,7 +985,7 @@ body.list-open .gradient-blur-bg {
 @media (min-width: 1440px) {
   .header {
     gap: 18px;
-    margin-bottom: 3.5rem;
+    margin-bottom: 7rem;
   }
 
   .header h2 {
@@ -1020,7 +1020,7 @@ body.list-open .gradient-blur-bg {
 @media (min-width: 1440px) {
   .student-group {
     grid-template-columns: 1fr 2fr;
-    margin-bottom: 88px;
+    margin-bottom: 56px;
   }
 }
 
@@ -1029,7 +1029,7 @@ body.list-open .gradient-blur-bg {
   font-size: 0.9rem;
   font-weight: 700;
   height: fit-content;
-  padding-block-start: 1.5rem;
+  padding-block-start: 0.9rem;
   padding-inline-start: 0.25rem;
   position: sticky;
   top: 2rem;
@@ -1040,30 +1040,30 @@ body.list-open .gradient-blur-bg {
 @media (min-width: 768px) {
   .student-group > p {
     font-size: 1rem;
-    padding-block-start: 2rem;
+    padding-block-start: 1rem;
     top: 3rem;
   }
 }
 
 @media (min-width: 1440px) {
   .student-group > p {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 700;
-    padding-block-start: 48px;
+    padding-block-start: 24px;
     padding-inline-start: 0.5rem;
     position: unset;
   }
 }
 
 .student-list-items-wrapper {
-  margin-top: 26px;
+  margin-top: 14px;
   padding-left: 0;
   list-style: none;
 }
 
 @media (min-width: 1440px) {
   .student-list-items-wrapper {
-    margin-top: 48px;
+    margin-top: 24px;
   }
 }
 
@@ -1113,8 +1113,8 @@ body.list-open .gradient-blur-bg {
   display: grid;
   grid-template-columns: 1fr 2fr auto;
   height: fit-content;
-  min-height: 60px;
-  padding: 12px 0;
+  min-height: 40px;
+  padding: 9px 0;
   text-decoration: none;
   transition: background-color 0.2s ease-in-out;
   width: 100%;
@@ -1132,15 +1132,15 @@ body.list-open .gradient-blur-bg {
 @media (min-width: 768px) {
   .student-link {
     grid-template-columns: 1fr 140px;
-    padding: 16px 0;
-    min-height: 45px;
+    padding: 10px 0;
+    min-height: 36px;
   }
 }
 
 @media (min-width: 1024px) {
   .student-link {
     grid-template-columns: 0.8fr 1.2fr;
-    padding: 20px 0;
+    padding: 12px 0;
   }
 }
 
@@ -1155,7 +1155,7 @@ body.list-open .gradient-blur-bg {
 .student-title {
   color: #fff;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
   margin: 0;
   text-transform: capitalize;
@@ -1171,13 +1171,13 @@ body.list-open .gradient-blur-bg {
   }
   
   .student-title {
-    font-size: 0.95rem;
+    font-size: 0.82rem;
   }
 }
 
 @media (min-width: 1440px) {
   .student-title {
-    font-size: 16px;
+    font-size: 14px;
   }
 }
 
@@ -1323,10 +1323,10 @@ body.list-open .gradient-blur-bg {
 .accomplishment-pill {
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  padding: 4px 12px;
+  border-radius: 14px;
+  padding: 3px 10px;
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
@@ -1360,7 +1360,7 @@ body.list-open .gradient-blur-bg {
 
 .student-organization {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   text-align: right;
   margin: 0;
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
@@ -1379,8 +1379,8 @@ body.list-open .gradient-blur-bg {
 
 @media (min-width: 768px) {
   .accomplishment-pill {
-    font-size: 0.7rem;
-    padding: 6px 14px;
+    font-size: 0.62rem;
+    padding: 4px 11px;
   }
 }
 
