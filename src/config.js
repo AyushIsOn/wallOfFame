@@ -14,7 +14,7 @@ export const WALL = {
 export const COLORS = {
   border: "rgba(255, 255, 255, 0.15)",
   background: "rgba(0, 0, 0, 1)",
-  text: "rgba(128, 128, 128, 1)",
+  text: "rgba(160, 160, 160, 1)",
 };
 
 // Radial fade applied at the screen edges (in normalised screen radius).

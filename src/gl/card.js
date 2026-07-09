@@ -61,22 +61,6 @@ const drawCover = (ctx, img, dx, dy, dw, dh) => {
 // Convert a cell-UV y (0 = bottom) to a canvas y (0 = top).
 const toCanvasY = (uvY, size) => (1 - uvY) * size;
 
-// Draw label text with a soft dark backing. On the default black cell this
-// backing is invisible (black on black); on the hover glow it darkens the
-// area right behind the text so muted (gray) labels stay legible. This lets
-// the year/department keep their subtle gray without vanishing on hover.
-const fillLabel = (ctx, text, x, y, fill, size) => {
-  ctx.save();
-  ctx.shadowColor = "rgba(0, 0, 0, 0.72)";
-  ctx.shadowBlur = size * 0.016;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.fillStyle = fill;
-  ctx.fillText(text, x, y); // glyph + shadow halo
-  ctx.fillText(text, x, y); // second pass deepens the halo behind the text
-  ctx.restore();
-};
-
 const drawTitle = (ctx, student, size) => {
   const top = toCanvasY(LAYOUT.titleY + LAYOUT.titleHeight, size);
   const bottom = toCanvasY(LAYOUT.titleY, size);
@@ -89,11 +73,13 @@ const drawTitle = (ctx, student, size) => {
 
   // Top-left: name (white).
   ctx.textAlign = "left";
-  fillLabel(ctx, student.name.toUpperCase(), inset, mid, "#ffffff", size);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(student.name.toUpperCase(), inset, mid);
 
-  // Top-right: year (muted gray, with backing for hover legibility).
+  // Top-right: year (muted).
   ctx.textAlign = "right";
-  fillLabel(ctx, String(student.year || "").toUpperCase(), size - inset, mid, COLORS.text, size);
+  ctx.fillStyle = COLORS.text;
+  ctx.fillText(String(student.year || "").toUpperCase(), size - inset, mid);
 };
 
 // Plain corner label sized to match the title row (used for the bottom-right).
@@ -113,7 +99,8 @@ const drawTags = (ctx, student, size) => {
     ctx.font = `${labelFontPx(size)}px '${CANVAS_FONT}', monospace`;
     ctx.textBaseline = "middle";
     ctx.textAlign = "right";
-    fillLabel(ctx, dept, size - inset, mid, COLORS.text, size);
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText(dept, size - inset, mid);
     rightLimit = size - inset - ctx.measureText(dept).width - inset;
   }
 
