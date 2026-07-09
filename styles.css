@@ -1029,6 +1029,12 @@ body.list-open .gradient-blur-bg {
   gap: 1rem;
 }
 
+/* First year group needs no top line — the header divider already sits
+   above the list; the border-top is only for separating later groups. */
+.student-group:first-child {
+  border-top: none;
+}
+
 @media (min-width: 768px) {
   .student-group {
     grid-template-columns: 1fr 4fr;
