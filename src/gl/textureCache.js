@@ -48,8 +48,18 @@ export class CardCache {
   // off a lazy load if needed. Never blocks.
   get(student) {
     let entry = this.entries.get(student.id);
+    // Guard against id reuse across dataset swaps: the wall paints from the
+    // static data.js first (ids 0,1,2…) and then swaps in the live API data,
+    // whose serial ids overlap those but point at DIFFERENT students. Without
+    // this check a cell would keep showing the stale cached card for that id
+    // while a click opened the new student at that id (display != identity).
+    if (entry && entry.student !== student) {
+      entry.texture?.dispose();
+      this.entries.delete(student.id);
+      entry = undefined;
+    }
     if (!entry) {
-      entry = { texture: null, avg: null, status: "loading", frame: this.frame };
+      entry = { student, texture: null, avg: null, status: "loading", frame: this.frame };
       this.entries.set(student.id, entry);
       this.load(student, entry);
     }
