@@ -53,11 +53,11 @@ wallOfFame/
 ├── vite.config.js        # Build config (two HTML entry points, dev proxy)
 ├── package.json          # Scripts + dependencies
 ├── render.yaml           # Render deploy blueprint
-├── public/               # Static assets served at site root
-│   ├── fonts/            # woff2 fonts (IBM Plex Mono, At Hauss Mono, Klim, Rokkitt)
-│   ├── images/           # UI icons (e.g. back.svg)
-│   ├── img*.jpeg         # Sample student photos
-│   └── thumbs/           # Generated square webp thumbnails
+├── public/               # Static assets served at site root (verified contents)
+│   ├── fonts/            # 6 woff2 files: IBMPlexMono-Regular/Medium/Bold, AtHaussMono-Regular, klim-font, Rokkitt
+│   ├── images/           # UI icons — currently just back.svg (the profile close/return glyph)
+│   ├── img1.jpeg … img25.jpeg   # 25 sample student photos
+│   └── thumbs/           # 25 generated square webp thumbnails (img1.webp … img25.webp)
 ├── scripts/
 │   └── thumbs.mjs        # Regenerate thumbnails from public/img*.jpeg
 ├── src/                  # Frontend source (built by Vite)
@@ -622,7 +622,10 @@ Talks to the same-origin API with a bearer token in `localStorage`.
 - `escapeHtml(str)` — HTML-escaping for table cells.
 - **Boot:** if a token exists in localStorage, `showApp()` immediately.
 
-> `src/admin/admin.css` is styling only (phantom-inspired dark dashboard) — no logic.
+> `src/admin/admin.css` — 268 lines, **pure CSS, no logic** (verified: zero JS
+> constructs). It styles the phantom-inspired dark admin dashboard (login,
+> hero, action cards, students table, edit modal). Nothing in it affects
+> behavior; all admin logic lives in `admin.js`.
 
 ## `index.html` — the wall page
 
@@ -761,5 +764,8 @@ if unset). The database password is separate — it lives inside `DATABASE_URL`.
 
 ---
 
-*End of handover. If something here has drifted from the code, the code is the
-source of truth — update this file when you change behavior.*
+*Verification: every source file referenced above was read directly and each
+specific claim (function names, numeric constants, routes, behaviors) was
+cross-checked against the code on `main`. If something here has drifted from
+the code, the code is the source of truth — update this file when you change
+behavior.*
