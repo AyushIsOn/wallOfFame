@@ -4,7 +4,7 @@
 # To avoid the "cannot have more than one active free tier database" error,
 # this blueprint does NOT auto-create a database. Create (or reuse) a Postgres
 # in the Render dashboard and set DATABASE_URL to its Internal Database URL
-# (see DEPLOY.md).
+# (see docs/deployment.md).
 services:
   - type: web
     name: wall-of-fame
