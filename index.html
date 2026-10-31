@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wall of Fame</title>
+    <meta name="description" content="Showcasing outstanding student achievements, internships, research projects, and academic excellence." />
+    <meta name="theme-color" content="#000000" />
+    <meta property="og:title" content="Wall of Fame" />
+    <meta property="og:description" content="Showcasing outstanding student achievements, internships, research projects, and academic excellence." />
+    <meta property="og:type" content="website" />
+    <!-- 2x2 tile icon (the wall motif), inline so it needs no extra request -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23000'/%3E%3Cg fill='%23fff'%3E%3Crect x='6' y='6' width='9' height='9' rx='1.5'/%3E%3Crect x='17' y='6' width='9' height='9' rx='1.5' opacity='.55'/%3E%3Crect x='6' y='17' width='9' height='9' rx='1.5' opacity='.55'/%3E%3Crect x='17' y='17' width='9' height='9' rx='1.5'/%3E%3C/g%3E%3C/svg%3E" />
     
     <!-- Preload only the modern woff2 of fonts needed for first paint -->
     <link rel="preload" href="/fonts/AtHaussMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -33,12 +40,13 @@
       </p>
 
       <div class="search-cta">
-        <div class="get-featured-link">
-          <svg class="link-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Becomes a link when VITE_GET_FEATURED_URL is set at build time (src/ui/getFeatured.js) -->
+        <a class="get-featured-link" id="getFeatured">
+          <svg class="link-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M2.666 10.995H0V13.6606H2.666V10.995ZM5.332 8.32938H2.666V10.995H5.332V8.32938ZM13.33 0.33252H10.664V2.99814H13.33V0.33252ZM10.664 0.33252H0V2.99814H10.664V0.33252ZM10.664 2.99814H13.33V13.6606H10.664V2.99814ZM7.998 5.66376H5.332V8.32938H7.998V5.66376ZM10.664 2.99814H7.998V5.66376H10.664V2.99814Z" fill="currentColor"/>
           </svg>
           <span>GET FEATURED</span>
-        </div>
+        </a>
         <button class="search-btn" id="searchBtn">
           <span>SEARCH</span>
         </button>
@@ -134,7 +142,7 @@
     <!-- Profile Overlay -->
     <div class="profile-overlay" id="profileOverlay">
       <div class="profile-backdrop"></div>
-      <div class="profile-card">
+      <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="profileName">
         <header class="profile-hdr">
           <a href="/" class="profile-logo" aria-label="Wall of Fame Home">
             Wall of<br>Fame

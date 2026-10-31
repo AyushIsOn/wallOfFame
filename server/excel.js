@@ -21,7 +21,41 @@ const ALIASES = {
   imageUrl: ["photo", "image", "photo url", "image url", "picture", "photo link", "image link", "photo url link"],
 };
 
-const norm = (h) => String(h).trim().toLowerCase();
+// Keyword fallback for link columns whose header is a form question.
+const URL_FIELD_KEYWORDS = {
+  imageUrl: /\b(photo|photograph|image|picture|pic|headshot)\b/,
+  linkedin: /\blinkedin\b/,
+  certificate: /\b(certificate|cert)\b/,
+  website: /\b(website|portfolio|github)\b/,
+};
+
+// Header -> comparable key: lowercase, punctuation as spaces, single spaces.
+// So "Reg No.", "REG-NO" and "Name *" match the aliases "reg no" and "name".
+const norm = (h) =>
+  String(h)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+// Year / batch cell -> a single year. Ranges resolve to their LAST year (the
+// passing year): "2021-2025" -> 2025, "2021-25" -> 2025, "2023-24" -> 2024.
+// Anything without a plausible year (1950-2100) -> null.
+export const parseYear = (raw) => {
+  const text = String(raw ?? "").trim();
+  const range = text.match(/((?:19|20)\d{2})\s*[-–—/]\s*(\d{2}|\d{4})\b/);
+  let year = null;
+  if (range) {
+    const start = Number(range[1]);
+    const end = range[2].length === 2 ? Number(range[1].slice(0, 2) + range[2]) : Number(range[2]);
+    // A real batch range moves forward by at most 10 years; otherwise this is
+    // something like a date ("2024-01"), so keep the first year.
+    year = end >= start && end - start <= 10 ? end : start;
+  } else {
+    const single = text.match(/(?:19|20)\d{2}/);
+    if (single) year = Number(single[0]);
+  }
+  return year && year >= 1950 && year <= 2100 ? year : null;
+};
 
 // Turn common Google Drive / OneDrive share links into a direct-download URL.
 // (Requires the shared file to be "anyone with the link" accessible.)
@@ -41,19 +75,29 @@ const rowToStudent = (row) => {
 
   const pick = (field) => {
     for (const alias of ALIASES[field]) {
-      const v = lower[alias];
+      const v = lower[norm(alias)];
       if (v !== undefined && String(v).trim() !== "") return String(v).trim();
+    }
+    // Form exports use the question as the header ("Upload your photo",
+    // "Your LinkedIn profile"). For link fields only, fall back to any header
+    // containing a keyword, and only accept a value that is actually a URL.
+    const keywords = URL_FIELD_KEYWORDS[field];
+    if (keywords) {
+      for (const [header, v] of Object.entries(lower)) {
+        const value = String(v).trim();
+        if (keywords.test(header) && /^https?:\/\//i.test(value)) return value;
+      }
     }
     return undefined;
   };
 
-  const yearRaw = pick("year");
-  const year = yearRaw ? parseInt(yearRaw.replace(/\D/g, ""), 10) || null : null;
+  const year = parseYear(pick("year"));
   const tagsRaw = pick("tags");
   const tags = tagsRaw
     ? tagsRaw.split(/[,;|/]/).map((t) => t.trim().toUpperCase()).filter(Boolean).slice(0, 4)
     : [];
   const type = pick("type") || "";
+  const category = pick("category") || type;
 
   return {
     name: pick("name") || "",
@@ -61,7 +105,9 @@ const rowToStudent = (row) => {
     regNo: pick("regNo") || "",
     department: (pick("department") || "").toUpperCase(),
     type: type.toUpperCase(),
-    category: (pick("category") || type || "others").toLowerCase(),
+    // undefined when the sheet says nothing about it: a new student then gets
+    // "others", and an existing student keeps their category on re-import.
+    category: category ? category.toLowerCase() : undefined,
     duration: pick("duration") || "",
     stipend: pick("stipend") || "",
     bio: pick("bio") || "",

@@ -7,6 +7,7 @@
 import { projects } from "../data.js";
 
 let _query;
+let _close = async () => {};
 
 export async function initDb() {
   if (process.env.DATABASE_URL) {
@@ -16,21 +17,38 @@ export async function initDb() {
       connectionString: process.env.DATABASE_URL,
       ssl: useSsl ? { rejectUnauthorized: false } : false,
     });
+    // Without this listener, an error on an IDLE pooled connection (e.g. the
+    // database restarting for maintenance) is an unhandled 'error' event and
+    // crashes the process. The pool replaces the broken client by itself.
+    pool.on("error", (err) => console.error("[db] idle client error:", err.message));
     _query = (text, params) => pool.query(text, params);
+    _close = () => pool.end();
   } else {
-    const { PGlite } = await import("@electric-sql/pglite");
+    let PGlite;
+    try {
+      ({ PGlite } = await import("@electric-sql/pglite"));
+    } catch {
+      throw new Error(
+        "DATABASE_URL is not set and PGlite is not installed. Set DATABASE_URL, " +
+          "or install dev dependencies (npm install) to use the local in-process database."
+      );
+    }
     const { mkdirSync } = await import("node:fs");
     const dir = process.env.PGLITE_DIR || "./.data/pg";
     mkdirSync(dir, { recursive: true });
     const db = new PGlite(dir);
     await db.waitReady;
     _query = (text, params) => db.query(text, params);
+    _close = () => db.close();
   }
   await migrate();
-  await seedIfEmpty();
+  if (process.env.SEED_SAMPLE_DATA !== "false") await seedIfEmpty();
 }
 
 export const query = (text, params) => _query(text, params);
+
+// Close the pool / local database (used on shutdown).
+export const closeDb = () => _close();
 
 async function migrate() {
   await query(`
@@ -60,6 +78,13 @@ async function migrate() {
       updated_at  TIMESTAMPTZ DEFAULT now()
     );
   `);
+  // Additive, idempotent column changes go here (safe to re-run every boot).
+  // Import bookkeeping, never exposed by the API:
+  //   about_source = the raw About text the current bio was generated from
+  //   photo_source = the Photo URL the current photo was imported from
+  // A re-import skips the AI call / photo download when these are unchanged.
+  await query(`ALTER TABLE students ADD COLUMN IF NOT EXISTS about_source TEXT`);
+  await query(`ALTER TABLE students ADD COLUMN IF NOT EXISTS photo_source TEXT`);
 }
 
 const toThumb = (url) => {

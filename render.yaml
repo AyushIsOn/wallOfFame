@@ -4,13 +4,14 @@
 # To avoid the "cannot have more than one active free tier database" error,
 # this blueprint does NOT auto-create a database. Create (or reuse) a Postgres
 # in the Render dashboard and set DATABASE_URL to its Internal Database URL
-# (see DEPLOY.md).
+# (see docs/deployment.md).
 services:
   - type: web
     name: wall-of-fame
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # npm ci installs exactly what package-lock.json pins (reproducible builds).
+    buildCommand: npm ci && npm run build
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
@@ -25,6 +26,10 @@ services:
       # Auto-generated secret for signing admin tokens.
       - key: TOKEN_SECRET
         generateValue: true
-      # Optional: your n8n webhook for tag generation.
+      # Optional: your n8n webhook for AI bio + tag enrichment.
       - key: N8N_TAGS_WEBHOOK_URL
+        sync: false
+      # Optional: where the header's "GET FEATURED" link points (read at BUILD
+      # time, so redeploy after changing it).
+      - key: VITE_GET_FEATURED_URL
         sync: false

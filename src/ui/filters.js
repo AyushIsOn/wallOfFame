@@ -1,11 +1,15 @@
-// Filters panel. Department + year pills are generated from the live data
-// (so they can never drift from what actually exists); categories use the
-// fixed vocabulary from config. All clicks flow through the store.
+// Filters panel. Category, department and year pills are all generated from
+// the live data (so they can never offer an option with zero students). All
+// clicks flow through the store.
 
 import { store } from "../store.js";
 
+const escapeHtml = (str) =>
+  String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// Values come from live data (department/year/category), so escape them.
 const pill = (type, value, text, active = false) =>
-  `<button class="filter-pill${active ? " active" : ""}" data-type="${type}" data-filter="${value}">${text}</button>`;
+  `<button class="filter-pill${active ? " active" : ""}" data-type="${type}" data-filter="${escapeHtml(value)}">${escapeHtml(text)}</button>`;
 
 const renderPills = (container, type, values, activeValue) => {
   if (!container) return;

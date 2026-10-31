@@ -1,0 +1,4 @@
+Name,Batch,Reg No,Department,Type,Duration,Stipend,About,Tags,LinkedIn,Website,Certificate,Photo URL
+RIYA DAS,2022-2026,22FE10CSE00101,CSE,INTERNSHIP,2 MONTHS,80000,"Riya interned at Atlassian on the Jira mobile team, where she shipped offline sync for editing issues.",,https://www.linkedin.com/in/example,,,http://localhost:3000/img5.jpeg
+KABIR SINGH,2023-27,23FE10ECE00042,ECE,HACKATHON,36 HOURS,,"Kabir won first place at Smart India Hackathon 2025 with an IoT flood-alert system for riverside villages.","IOT, SIH'25",,,https://example.com/certificate.pdf,
+MEERA IYER,2025,21FE10CAI00007,CAI,RESEARCH,6 MONTHS,Unpaid,"Meera co-authored a paper at EMNLP 2025 on low-resource machine translation for Indic languages.",,,https://example.com,,

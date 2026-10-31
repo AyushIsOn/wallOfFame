@@ -22,9 +22,10 @@ export function localTags(text) {
     if (found.size >= 3) break;
   }
   if (found.size < 3) {
-    const up = text.toUpperCase();
+    // Whole words only, so "UI" doesn't match "BUILT" or "AI" match "PAID".
+    const words = new Set(text.toUpperCase().split(/[^A-Z0-9]+/));
     for (const k of KEYWORDS) {
-      if (up.includes(k)) found.add(k);
+      if (words.has(k)) found.add(k);
       if (found.size >= 3) break;
     }
   }
@@ -34,6 +35,9 @@ export function localTags(text) {
 // Trim to <= 256 chars at a word boundary (used when no LLM is available).
 const localBio = (text) =>
   text.length <= 256 ? text : text.slice(0, 253).replace(/\s+\S*$/, "") + "…";
+
+// An LLM call that hangs falls back to local enrichment after this long.
+const WEBHOOK_TIMEOUT_MS = 20_000;
 
 // Returns { bio, tags } from the about text.
 export async function enrichAbout(about) {
@@ -47,6 +51,7 @@ export async function enrichAbout(about) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ about: text }),
+        signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
       });
       if (res.ok) {
         const data = await res.json();
