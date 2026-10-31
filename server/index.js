@@ -269,6 +269,9 @@ const sendPage = (file) => (_req, res) => {
   if (!existsSync(full)) return res.status(503).type("text/plain").send(NOT_BUILT);
   res.sendFile(full);
 };
+// public/ is copied into dist/ by the build. Serving it as a fallback makes the
+// sample photos and fonts available before a build too (npm run dev:server).
+app.use(express.static(path.join(__dirname, "..", "public")));
 app.get("/admin", sendPage("admin.html"));
 app.get("/", sendPage("index.html"));
 

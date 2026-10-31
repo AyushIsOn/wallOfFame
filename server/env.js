@@ -5,6 +5,10 @@
 
 import { existsSync } from "node:fs";
 
-if (existsSync(".env") && typeof process.loadEnvFile === "function") {
-  process.loadEnvFile(".env");
+if (existsSync(".env")) {
+  if (typeof process.loadEnvFile === "function") {
+    process.loadEnvFile(".env");
+  } else {
+    console.warn(`[env] .env found but Node ${process.version} can't load it; use Node 20.12 or newer.`);
+  }
 }

@@ -3,9 +3,11 @@
 
 import crypto from "node:crypto";
 
-// Production = a real database is configured (Render) or NODE_ENV says so.
-// There, the insecure dev defaults are refused instead of silently used.
-const IS_PROD = !!process.env.DATABASE_URL || process.env.NODE_ENV === "production";
+// Production = a real database is configured, NODE_ENV says so, or we're on
+// Render (which sets RENDER=true). There, the insecure dev defaults are
+// refused instead of silently used.
+const IS_PROD =
+  !!process.env.DATABASE_URL || process.env.NODE_ENV === "production" || !!process.env.RENDER;
 
 const SECRET =
   process.env.TOKEN_SECRET ||
