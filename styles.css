@@ -393,6 +393,7 @@ body.list-open .gradient-blur-bg {
   display: flex;
   align-items: flex-end;
   gap: 4px;
+  text-decoration: none;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
   font-size: 0.68rem;
@@ -412,6 +413,11 @@ body.list-open .gradient-blur-bg {
 
 .get-featured-link:hover {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* No VITE_GET_FEATURED_URL configured: a label, not a link. */
+.get-featured-link:not([href]) {
+  cursor: default;
 }
 
 .link-arrow {
@@ -1400,15 +1406,7 @@ body.list-open .gradient-blur-bg {
   white-space: nowrap;
 }
 
-/* Empty state for list view */
-.list-empty {
-  color: rgba(255, 255, 255, 0.4);
-  font-family: 'At Hauss Mono', 'IBM Plex Mono', monospace;
-  font-size: 1rem;
-  text-align: center;
-  padding: 4rem 2rem;
-  margin: 0;
-}
+
 
 @media (min-width: 768px) {
   .accomplishment-pill {
@@ -1429,12 +1427,17 @@ body.list-open .gradient-blur-bg {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  /* visibility (delayed until the fade ends) takes the closed overlay out of
+     the tab order and the accessibility tree, like the search/filter panels */
+  visibility: hidden;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.35s;
 }
 
 .profile-overlay.active {
   opacity: 1;
   pointer-events: auto;
+  visibility: visible;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .profile-overlay.closing {
@@ -1540,6 +1543,29 @@ body.list-open .gradient-blur-bg {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Student without a usable photo: show their initials instead. */
+.profile-photo-wrap.no-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-photo-wrap.no-photo::after {
+  content: attr(data-initials);
+  font-family: 'Rokkitt', serif;
+  font-size: clamp(48px, 8vw, 120px);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* JS hides missing photos / social links with the hidden attribute; these
+   elements set their own display, so restate it. */
+#profilePhoto[hidden],
+.profile-socials-block[hidden],
+.profile-social-link[hidden] {
+  display: none;
 }
 
 /* ── Right column - info ── */
@@ -1839,7 +1865,9 @@ body.list-open .gradient-blur-bg {
 /* Empty list message */
 .list-empty {
   list-style: none;
+  margin: 0;
   padding: 32px 0;
+  text-align: center;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.85rem;

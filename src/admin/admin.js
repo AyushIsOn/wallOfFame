@@ -3,6 +3,7 @@
 
 const $ = (id) => document.getElementById(id);
 const TOKEN_KEY = "wof_token";
+const SESSION_EXPIRED = "Session expired — sign in again.";
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let students = [];
 let pendingPhoto = null; // File awaiting upload on save
@@ -12,9 +13,11 @@ const api = async (path, { method = "GET", body, form } = {}) => {
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body && !form) headers["Content-Type"] = "application/json";
   const res = await fetch(path, { method, headers, body: form ? body : body ? JSON.stringify(body) : undefined });
-  if (res.status === 401) {
-    logout();
-    throw new Error("Session expired — sign in again.");
+  // A 401 from the login call is just a wrong password (handled below); from
+  // anything else it means the session token expired or was revoked.
+  if (res.status === 401 && path !== "/api/admin/login") {
+    logout(SESSION_EXPIRED);
+    throw new Error(SESSION_EXPIRED);
   }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
   return res.status === 204 ? null : res.json();
@@ -28,11 +31,15 @@ function showApp() {
   $("app").hidden = false;
   loadStudents();
 }
-function logout() {
+// Back to the sign-in screen. `message` (e.g. why) shows under the password
+// field; the edit modal is closed so it can't cover the form.
+function logout(message = "") {
   token = "";
   localStorage.removeItem(TOKEN_KEY);
   $("app").hidden = true;
+  $("modal").hidden = true;
   $("login").hidden = false;
+  $("loginError").textContent = message;
 }
 
 $("loginForm").addEventListener("submit", async (e) => {
@@ -48,10 +55,10 @@ $("loginForm").addEventListener("submit", async (e) => {
     $("loginError").textContent = err.message;
   }
 });
-$("logout").addEventListener("click", logout);
+$("logout").addEventListener("click", () => logout());
 
 // ---- Table ----
-const tagPills = (tags) => (tags || []).slice(0, 3).map((t) => `<span class="tag">${t}</span>`).join("");
+const tagPills = (tags) => (tags || []).slice(0, 3).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("");
 
 function renderRows() {
   const q = $("search").value.trim().toLowerCase();
@@ -62,10 +69,10 @@ function renderRows() {
     .map(
       (s) => `
     <tr data-id="${s.id}">
-      <td><img class="cell-thumb" src="${s.thumbnail || s.image || ""}" alt="" onerror="this.style.visibility='hidden'"/></td>
+      <td><img class="cell-thumb" src="${escapeHtml(s.thumbnail || s.image || "")}" alt=""/></td>
       <td>${escapeHtml(s.name)}</td>
       <td>${escapeHtml(s.department || "")}</td>
-      <td>${s.year || ""}</td>
+      <td>${escapeHtml(s.year || "")}</td>
       <td>${escapeHtml(s.type || "")}</td>
       <td><div class="cell-tags">${tagPills(s.tags)}</div></td>
       <td><button class="ghost row-del" data-del="${s.id}">Delete</button></td>
@@ -86,13 +93,34 @@ async function loadStudents() {
 
 $("search").addEventListener("input", renderRows);
 
+// Hide thumbnails that fail to load (students without a photo). A capturing
+// listener, because the CSP forbids inline onerror= handlers.
+$("rows").addEventListener(
+  "error",
+  (e) => {
+    if (e.target.matches?.("img.cell-thumb")) e.target.style.visibility = "hidden";
+  },
+  true
+);
+
+async function removeStudent(id) {
+  if (!id || !confirm("Delete this student?")) return false;
+  try {
+    await api(`/api/admin/students/${id}`, { method: "DELETE" });
+    await loadStudents();
+    status("Deleted");
+    return true;
+  } catch (err) {
+    status(err.message);
+    return false;
+  }
+}
+
 $("rows").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-del]");
   if (del) {
     e.stopPropagation();
-    if (!confirm("Delete this student?")) return;
-    await api(`/api/admin/students/${del.dataset.del}`, { method: "DELETE" });
-    await loadStudents();
+    await removeStudent(del.dataset.del);
     return;
   }
   const row = e.target.closest("tr[data-id]");
@@ -162,13 +190,16 @@ $("photoFile").addEventListener("change", (e) => {
   $("photoPreview").src = URL.createObjectURL(file);
 });
 
+// Preview tags from the About text without saving; the admin reviews them and
+// they are stored on Save like any other field.
 $("genTags").addEventListener("click", async () => {
   try {
+    const about = $("f_bio").value.trim();
+    if (!about) throw new Error("Write an About / Bio first");
     status("Generating tags…");
-    const saved = await persist(); // ensure it exists so the server can read the bio
-    const { tags } = await api(`/api/admin/students/${saved.id}/tags`, { method: "POST", body: { about: $("f_bio").value } });
+    const { tags } = await api("/api/admin/enrich", { method: "POST", body: { about } });
     $("f_tags").value = (tags || []).join(", ");
-    status("Tags generated");
+    status("Tags generated — review, then Save");
   } catch (err) {
     status(err.message);
   }
@@ -193,11 +224,7 @@ $("saveBtn").addEventListener("click", async () => {
 });
 
 $("deleteBtn").addEventListener("click", async () => {
-  const id = $("f_id").value;
-  if (!id || !confirm("Delete this student?")) return;
-  await api(`/api/admin/students/${id}`, { method: "DELETE" });
-  closeModal();
-  await loadStudents();
+  if (await removeStudent($("f_id").value)) closeModal();
 });
 
 // ---- Import (primary flow) ----
@@ -215,7 +242,8 @@ $("templateBtn").addEventListener("click", () => {
   a.href = URL.createObjectURL(blob);
   a.download = "wall-of-fame-template.csv";
   a.click();
-  URL.revokeObjectURL(a.href);
+  // Revoking synchronously can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
 async function handleImport(file) {
@@ -226,12 +254,21 @@ async function handleImport(file) {
     fd.append("file", file);
     const r = await api("/api/admin/import", { method: "POST", form: true, body: fd });
     await loadStudents();
+    const n = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
     let msg = `Imported ${r.imported} new`;
     if (r.updated) msg += `, updated ${r.updated}`;
-    if (r.photos) msg += `, ${r.photos} photos`;
-    if (r.photoErrors?.length) msg += ` — ${r.photoErrors.length} photo(s) failed`;
+    if (r.photos) msg += `, ${n(r.photos, "photo")} saved`;
+    if (r.photosSkipped) msg += `, ${n(r.photosSkipped, "photo")} unchanged`;
+    const failed = r.photoErrors || [];
+    if (failed.length) {
+      // Name the students (with the reason) so the admin knows whose photo to
+      // fix or upload by hand; the full list also goes to the console.
+      const shown = failed.slice(0, 3).join("; ");
+      const more = failed.length > 3 ? ` and ${failed.length - 3} more` : "";
+      msg += `. ${n(failed.length, "photo")} failed: ${shown}${more}`;
+      console.warn("Photo errors:", failed);
+    }
     status(msg);
-    if (r.photoErrors?.length) console.warn("Photo errors:", r.photoErrors);
   } catch (err) {
     status(err.message);
   }
@@ -266,5 +303,18 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
+// The token's payload is plain base64url JSON with an `exp` timestamp (only
+// the signature is secret), so an expired session can be detected up front
+// instead of on the first failed save.
+const tokenExpired = (t) => {
+  try {
+    const body = t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+    return !(JSON.parse(atob(body)).exp > Date.now());
+  } catch {
+    return true;
+  }
+};
+
 // Boot
-if (token) showApp();
+if (token && tokenExpired(token)) logout(SESSION_EXPIRED);
+else if (token) showApp();

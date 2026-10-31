@@ -140,7 +140,32 @@ const drawTags = (ctx, student, size) => {
   }
 };
 
-// Build a finished card canvas for a student given its already-loaded image.
+// Up to two initials from a name ("RAVI KUMAR SHARMA" -> "RK").
+export const initials = (name) =>
+  String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || "?";
+
+// Hover-glow color used for cards without a photo (a neutral cool gray).
+export const PLACEHOLDER_GLOW = [0.42, 0.44, 0.5];
+
+// Stand-in for a missing/broken photo: a dark square with the initials, so a
+// student without a photo still shows up on the wall with their name/tags.
+const drawPhotoPlaceholder = (ctx, student, x, y, side) => {
+  ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+  ctx.fillRect(x, y, side, side);
+  ctx.font = `${Math.round(side * 0.28)}px '${CANVAS_FONT}', monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.fillText(initials(student.name), x + side / 2, y + side / 2);
+};
+
+// Build a finished card canvas for a student given its already-loaded image
+// (or null when the student has no usable photo).
 // The background is left TRANSPARENT so the wall can render a colored hover
 // glow behind it; the tile's default black comes from the cleared scene.
 export const drawCard = (student, img, size) => {
@@ -151,9 +176,13 @@ export const drawCard = (student, img, size) => {
   // Centred photo square.
   const side = LAYOUT.imageSize * size;
   const offset = (size - side) / 2;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  drawCover(ctx, img, offset, offset, side, side);
+  if (img) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    drawCover(ctx, img, offset, offset, side, side);
+  } else {
+    drawPhotoPlaceholder(ctx, student, offset, offset, side);
+  }
 
   drawTitle(ctx, student, size);
   drawTags(ctx, student, size);

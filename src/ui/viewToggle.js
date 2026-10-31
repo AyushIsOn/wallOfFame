@@ -25,6 +25,8 @@ export const initViewToggle = () => {
       listWrapper.classList.remove("is-open");
       listWrapper.classList.add("hidden");
       gallery.style.display = "block";
+      // The wall skips resizes while hidden; let it re-measure now.
+      window.dispatchEvent(new Event("resize"));
       document.body.classList.remove("list-open");
       setTimeout(() => {
         if (current === "wall") listWrapper.style.display = "none";

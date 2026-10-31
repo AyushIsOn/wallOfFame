@@ -6,8 +6,24 @@ import { query } from "./db.js";
 const LIST_COLS = `
   id, name, year, reg_no, department, type, category, duration, stipend, bio,
   tags, linkedin, website, certificate, image_url, thumb_url, position,
-  (image IS NOT NULL) AS has_image, (thumb IS NOT NULL) AS has_thumb
+  (image IS NOT NULL) AS has_image, (thumb IS NOT NULL) AS has_thumb,
+  updated_at
 `;
+
+// Version stamp for blob URLs: changes whenever the row changes, so browsers
+// (which cache blob responses) fetch a re-uploaded photo immediately.
+const version = (r) => {
+  const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+  return Number.isFinite(t) && t > 0 ? `?v=${t}` : "";
+};
+
+// Year from the API/admin form: an integer in a sane range, else null (keeps
+// junk like "abc" from reaching the INTEGER column as a 500).
+const toYear = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1950 && n <= 2100 ? n : null;
+};
 
 const parseTags = (t) => {
   if (Array.isArray(t)) return t;
@@ -23,8 +39,9 @@ const parseTags = (t) => {
 
 // DB row -> public student object consumed by the wall, list and profile.
 export const mapRow = (r) => {
-  const image = r.image_url || (r.has_image ? `/api/students/${r.id}/image` : null);
-  const thumbnail = r.thumb_url || (r.has_thumb ? `/api/students/${r.id}/thumb` : image);
+  const v = version(r);
+  const image = r.image_url || (r.has_image ? `/api/students/${r.id}/image${v}` : null);
+  const thumbnail = r.thumb_url || (r.has_thumb ? `/api/students/${r.id}/thumb${v}` : image);
   return {
     id: r.id,
     name: r.name,
@@ -60,6 +77,13 @@ export async function getByRegNo(regNo) {
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
+// What the last import used for this student: the raw About text and the
+// Photo URL (each null if never imported).
+export async function getImportState(id) {
+  const { rows } = await query("SELECT about_source, photo_source FROM students WHERE id = $1", [id]);
+  return { aboutSource: rows[0]?.about_source ?? null, photoSource: rows[0]?.photo_source ?? null };
+}
+
 // Build (columns, placeholders, values) from the frontend shape. Only provided
 // fields are included; tags is cast to jsonb.
 const buildColumns = (data, { withName }) => {
@@ -75,7 +99,7 @@ const buildColumns = (data, { withName }) => {
   };
 
   if (withName || data.name !== undefined) add("name", data.name || "Unnamed");
-  if (data.year !== undefined) add("year", data.year === "" ? null : data.year);
+  if (data.year !== undefined) add("year", toYear(data.year));
   if (data.regNo !== undefined) add("reg_no", data.regNo);
   if (data.department !== undefined) add("department", data.department);
   if (data.type !== undefined) add("type", data.type);
@@ -87,10 +111,11 @@ const buildColumns = (data, { withName }) => {
   if (data.tags !== undefined)
     add("tags", JSON.stringify(Array.isArray(data.tags) ? data.tags : []), "::jsonb");
   if (data.socials !== undefined) {
-    add("linkedin", data.socials.linkedin || "#");
-    add("website", data.socials.website || "#");
+    add("linkedin", data.socials?.linkedin || "#");
+    add("website", data.socials?.website || "#");
   }
   if (data.certificate !== undefined) add("certificate", data.certificate);
+  if (data.aboutSource !== undefined) add("about_source", data.aboutSource);
   if (data.image_url !== undefined) add("image_url", data.image_url);
   if (data.thumb_url !== undefined) add("thumb_url", data.thumb_url);
 
@@ -125,12 +150,16 @@ export async function getImageBlob(id, which = "image") {
   return rows[0]?.data ? rows[0] : null;
 }
 
-export async function setImageBlob(id, full, thumb) {
+// Store a processed photo. `photoSource` is the Photo URL when the photo came
+// from an import; a manual upload passes nothing and leaves it as is, so a
+// later re-import of the same sheet row won't overwrite the uploaded photo.
+export async function setImageBlob(id, full, thumb, { photoSource } = {}) {
   await query(
     `UPDATE students
        SET image = $1, image_type = $2, thumb = $3, thumb_type = $4,
-           image_url = NULL, thumb_url = NULL, updated_at = now()
+           image_url = NULL, thumb_url = NULL, updated_at = now(),
+           photo_source = COALESCE($6, photo_source)
      WHERE id = $5`,
-    [full.data, full.type, thumb.data, thumb.type, id]
+    [full.data, full.type, thumb.data, thumb.type, id, photoSource ?? null]
   );
 }

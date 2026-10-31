@@ -14,13 +14,16 @@
   },
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20.12"
+  },
   "dependencies": {
     "express": "^5.2.1",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
     "sharp": "^0.35.2",
     "three": "^0.177.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.3",

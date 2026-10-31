@@ -10,7 +10,6 @@ export const projects = [
     stipend: "250000",
     bio: "Published at ACL'24 on human-computer interaction and adaptive interfaces. His work explores how AI can improve accessibility in digital platforms, combining deep learning with user-centered design principles to create more inclusive technology.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ACL'24", "HCI", "AI"]
   },
   {
@@ -24,7 +23,6 @@ export const projects = [
     stipend: "200000",
     bio: "Presented at ICML'24 on novel machine learning algorithms for edge computing. Developed efficient model compression techniques that reduce inference time by 40% while maintaining accuracy, making AI deployment feasible on resource-constrained devices.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ICML'24", "ML", "ALGORITHMS"]
   },
   {
@@ -38,7 +36,6 @@ export const projects = [
     stipend: "350000",
     bio: "Completed a design internship at Google, working on UX improvements for Google Workspace. Redesigned the collaboration flow in Google Docs, resulting in a 25% increase in user engagement during real-time editing sessions.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["GOOGLE", "DESIGN", "UX"]
   },
   {
@@ -52,7 +49,6 @@ export const projects = [
     stipend: "300000",
     bio: "Published at ACM CHI'25 on brain-computer interfaces and cognitive psychology. Designed a non-invasive BCI system that allows users to control digital interfaces through thought, opening new possibilities for assistive technology.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ACMCHI'25", "BCI", "PSYCHOLOGY"]
   },
   {
@@ -66,7 +62,6 @@ export const projects = [
     stipend: "400000",
     bio: "Remote internship at Meta working on AI infrastructure. Built scalable data pipelines that process over 10 million requests daily, significantly improving the reliability of Meta's machine learning training systems.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["META", "REMOTE", "AI"]
   },
   {
@@ -80,7 +75,6 @@ export const projects = [
     stipend: "150000",
     bio: "Published at NeurIPS'23 on adversarial machine learning and cybersecurity. Developed novel defense mechanisms against gradient-based attacks, improving model robustness by 35% in real-world deployment scenarios.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["NEURIPS'23", "ML", "CYBERSECURITY"]
   },
   {
@@ -94,7 +88,6 @@ export const projects = [
     stipend: "320000",
     bio: "Design internship at Apple focusing on human-computer interaction for accessibility features. Contributed to VoiceOver improvements that made iOS more usable for visually impaired users across 30+ languages.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["APPLE", "DESIGN", "HCI"]
   },
   {
@@ -108,7 +101,6 @@ export const projects = [
     stipend: "280000",
     bio: "Published at ICLR'24 on efficient training algorithms for large language models. Proposed a novel optimization technique that reduces training time by 30% without compromising model quality.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ICLR'24", "ALGORITHMS", "AI"]
   },
   {
@@ -122,7 +114,6 @@ export const projects = [
     stipend: "380000",
     bio: "Research internship at Microsoft in the Media and Data Science Research Lab. Worked on generative AI for content creation, developing models that assist designers in creating adaptive user interfaces for enterprise applications.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["MICROSOFT", "HCI", "DESIGN"]
   },
   {
@@ -136,7 +127,6 @@ export const projects = [
     stipend: "220000",
     bio: "Published at CHI'24 on brain-computer interfaces for cognitive assessment. Developed a portable EEG-based system that can detect early signs of cognitive decline with 92% accuracy.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["CHI'24", "BCI", "PSYCHOLOGY"]
   },
   {
@@ -150,7 +140,6 @@ export const projects = [
     stipend: "450000",
     bio: "Internship at Tesla on autonomous driving AI systems. Contributed to the perception stack by improving object detection in low-light conditions, achieving a 15% reduction in false negatives.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["TESLA", "AI", "CYBERSECURITY"]
   },
   {
@@ -164,7 +153,6 @@ export const projects = [
     stipend: "260000",
     bio: "Published at UIST'24 on human-computer interaction and machine learning for creative tools. Built an intelligent sketching assistant that helps designers prototype interfaces 40% faster using predictive layout generation.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["UIST'24", "HCI", "ML"]
   },
   {
@@ -178,7 +166,6 @@ export const projects = [
     stipend: "310000",
     bio: "Design internship at Adobe working on Creative Cloud UX improvements. Redesigned the layer management system in Photoshop, reducing workflow friction and receiving positive feedback from 85% of beta testers.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ADOBE", "DESIGN", "UX"]
   },
   {
@@ -192,7 +179,6 @@ export const projects = [
     stipend: "240000",
     bio: "Published at CVPR'24 on computer vision and efficient neural architectures. Developed a lightweight object detection model that runs in real-time on mobile devices with only 2MB of memory footprint.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["CVPR'24", "AI", "ALGORITHMS"]
   },
   {
@@ -206,7 +192,6 @@ export const projects = [
     stipend: "370000",
     bio: "Remote internship at Netflix working on recommendation systems. Improved the content recommendation algorithm using multi-modal learning, increasing viewer engagement by 12% on the platform.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["NETFLIX", "REMOTE", "ML"]
   },
   {
@@ -220,7 +205,6 @@ export const projects = [
     stipend: "290000",
     bio: "UX internship at Spotify redesigning the podcast discovery experience. Conducted user research with 200+ participants and designed a new browsing interface that increased podcast listening time by 18%.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["SPOTIFY", "UX", "DESIGN"]
   },
   {
@@ -234,7 +218,6 @@ export const projects = [
     stipend: "210000",
     bio: "Published at ICCV'24 on computer vision for security applications. Developed a real-time anomaly detection system for surveillance footage that reduces false alarms by 60% compared to existing solutions.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ICCV'24", "AI", "CYBERSECURITY"]
   },
   {
@@ -248,7 +231,6 @@ export const projects = [
     stipend: "420000",
     bio: "Machine learning internship at Amazon working on supply chain optimization. Built predictive models that reduced delivery time variance by 22%, directly improving customer satisfaction scores.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["AMAZON", "ML", "ALGORITHMS"]
   },
   {
@@ -262,7 +244,6 @@ export const projects = [
     stipend: "270000",
     bio: "Published at SIGCHI'25 on human-computer interaction and cognitive psychology. Investigated how interface animations affect user attention span and designed guidelines that improve task completion rates by 28%.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["SIGCHI'25", "HCI", "PSYCHOLOGY"]
   },
   {
@@ -276,7 +257,6 @@ export const projects = [
     stipend: "390000",
     bio: "AI internship at NVIDIA working on GPU-accelerated deep learning. Optimized training pipelines for large vision models, achieving 2.5x speedup on the latest H100 hardware through custom CUDA kernels.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["NVIDIA", "AI", "ML"]
   },
   {
@@ -290,7 +270,6 @@ export const projects = [
     stipend: "180000",
     bio: "Published at AAAI'24 on brain-computer interfaces and efficient algorithms. Designed a signal processing pipeline that decodes motor imagery EEG signals with 85% accuracy using only 8 electrodes.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["AAAI'24", "BCI", "ALGORITHMS"]
   },
   {
@@ -304,7 +283,6 @@ export const projects = [
     stipend: "340000",
     bio: "Remote internship at Uber building human-computer interaction tools for driver safety. Developed a real-time fatigue detection system using computer vision that reduced accident rates by 30% in pilot testing.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["UBER", "REMOTE", "HCI"]
   },
   {
@@ -318,7 +296,6 @@ export const projects = [
     stipend: "230000",
     bio: "Published at ECCV'24 on generative AI for design automation. Created a text-to-layout system that generates professional UI mockups from natural language descriptions, reducing early-stage design time by 60%.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["ECCV'24", "AI", "DESIGN"]
   },
   {
@@ -332,7 +309,6 @@ export const projects = [
     stipend: "480000",
     bio: "Internship at OpenAI contributing to language model safety research. Developed evaluation frameworks for detecting harmful outputs, improving the safety filter accuracy by 40% in GPT-4 deployments.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["OPENAI", "ML", "CYBERSECURITY"]
   },
   {
@@ -346,7 +322,6 @@ export const projects = [
     stipend: "200000",
     bio: "Published at WACV'25 on psychology-informed AI systems. Built emotion-aware interfaces that adapt to user mood states, demonstrating a 35% improvement in user satisfaction during extended interaction sessions.",
     socials: { linkedin: "#", website: "#" },
-    href: "/sample-project",
     tags: ["WACV'25", "PSYCHOLOGY", "AI"]
   },
 ];

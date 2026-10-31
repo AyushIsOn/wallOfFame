@@ -10,12 +10,19 @@ export const initSearch = () => {
   if (!btn || !overlay || !input) return;
 
   const closeBtn = overlay.querySelector(".search-close");
+  let debounce;
 
   const open = () => {
     overlay.classList.add("active");
     setTimeout(() => input.focus(), 50);
   };
-  const close = () => overlay.classList.remove("active");
+  // Closing always clears the query, so a hidden search can't keep filtering.
+  const close = () => {
+    clearTimeout(debounce);
+    input.value = "";
+    store.setSearch("");
+    overlay.classList.remove("active");
+  };
 
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -23,16 +30,11 @@ export const initSearch = () => {
   });
   closeBtn?.addEventListener("click", close);
 
-  let debounce;
   input.addEventListener("input", () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => store.setSearch(input.value), 120);
   });
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      input.value = "";
-      store.setSearch("");
-      close();
-    }
+    if (e.key === "Escape") close();
   });
 };
