@@ -239,13 +239,13 @@ To run browser tests in this sandbox, Chromium needs `nss`/`nspr` system libs
 - **#2 (merged):** Virtualized, texture-streaming wall (scales to thousands) +
   thumbnail pipeline.
 - **#3, #4 (merged):** Hover glow + visual fixes — superseded by #6.
-- **#6 (open):** Sharpen wall (disable mipmaps, fisheye in vertex shader, crisp
-  grid lines, flat darker in-cell hover glow). **Merge this.**
-- **#7 (open):** Admin dashboard + Express/Postgres backend + Excel import +
-  image upload + n8n tags + Render config + edge-case hardening. **Merge after #6.**
-
-`main` currently has the merged virtualization but an earlier (blurry) renderer;
-**#6 fixes that on `main`**, then **#7** adds the backend.
+- **#6 (merged):** Sharpen wall (disable mipmaps, fisheye in vertex shader, crisp
+  grid lines, flat darker in-cell hover glow).
+- **#7 (merged):** Admin dashboard + Express/Postgres backend + Excel import +
+  image upload + n8n tags + Render config + edge-case hardening.
+- **#8–#31 (merged):** card layout, admin redesign, n8n workflow, list view,
+  profile polish, docs. See `PROJECT_OVERVIEW.md` §6.
+- **`fix/finish-hardening`:** security/reliability fixes; see `HANDOVER.md` Part H.
 
 > The PR tool auto-appends a Kiro attribution footer to PR descriptions; delete
 > it manually on GitHub if unwanted.
@@ -256,8 +256,6 @@ To run browser tests in this sandbox, Chromium needs `nss`/`nspr` system libs
 
 - Excel rows **without** a Reg No can't dedup → re-import creates duplicates.
 - Bulk import with n8n tagging is **sequential** (slow for thousands at once).
-- A custom `Type` (e.g. "HACKATHON") becomes category `hackathon`, while the
-  filter pill is `hackathons` (plural) — minor naming drift.
 - Images are stored in Postgres (`bytea`) — fine at college scale; move to
   object storage (Cloudflare R2 / S3) for very large datasets.
 - Auth is a single shared admin password (no per-user accounts).

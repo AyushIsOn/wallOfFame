@@ -133,21 +133,13 @@ fill in their info, the teacher verifies/cleans it, then uploads **one sheet**.
 
 ---
 
-## 7. In progress (not yet merged)
+## 7. Recently completed
 
-**List view redesign + filter/search bug fixes** (branch `feat/list-and-filters`):
-- Redesign the **list view** to phantom's "All projects" layout — big "All
-  projects" heading + grey "N projects" count, grouped by **year**, each row =
-  title · tag pills · org/department, thin separators, row hover.
-  (`src/ui/listView.js` rewritten.)
-- **Bugs found via headless exploration that still need fixing:**
-  1. **Search "×" bug:** closing the search overlay hides it but doesn't clear
-     the query → results stay filtered with no visible search bar (a hidden
-     stuck filter). Fix: `close()` must also clear input + `store.setSearch("")`.
-  2. **Dead category options:** category pills come from the fixed `CATEGORIES`
-     list, but real data only has a few categories → clicking e.g. "sports"
-     returns 0 results. Fix: derive categories from live data (like
-     department/year already are).
+- The **list view redesign** (year-grouped, phantom-style) and profile polish
+  landed in PRs #13–#31.
+- **`fix/finish-hardening`:** the search "×" bug and dead category pills are
+  fixed (categories now come from live data), plus security and reliability
+  fixes. The full list is under "Resolved" in `HANDOVER.md` Part H.
 
 ---
 
@@ -155,8 +147,6 @@ fill in their info, the teacher verifies/cleans it, then uploads **one sheet**.
 
 - Excel rows **without** a Reg No can't dedup → re-import creates duplicates.
 - Bulk import with n8n tagging is **sequential** (slow for thousands at once).
-- A custom `Type` (e.g. "HACKATHON") becomes category `hackathon` while the
-  filter pill is `hackathons` (plural) — minor naming drift.
 - Images live in Postgres (`bytea`) — fine at college scale; move to object
   storage (R2 / S3) for very large datasets.
 - Auth is a single shared admin password (no per-user accounts).
@@ -165,7 +155,6 @@ fill in their info, the teacher verifies/cleans it, then uploads **one sheet**.
 
 ## 9. Roadmap / next steps
 
-- Finish & merge the **list-view redesign + filter/search fixes** (Section 7).
 - **Photo matching in import** (e.g. a Reg-No-named photo zip → auto-attach), or
   an authenticated Drive/OneDrive n8n workflow for locked-down M365 orgs.
 - **Object storage** for images at scale; **batch/async** import with progress.

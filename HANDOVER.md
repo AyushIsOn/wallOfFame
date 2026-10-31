@@ -79,6 +79,7 @@ wallOfFame/
 │       ├── admin.js      # Admin dashboard logic
 │       └── admin.css     # Admin dashboard styling
 └── server/               # Backend (Node/Express)
+    ├── env.js            # Loads ./.env (imported first by index.js)
     ├── index.js          # Express app: routes + static serving + startup
     ├── db.js             # DB init/migrate/seed; pg vs PGlite
     ├── students.js       # Student queries + row↔object mapping
@@ -139,7 +140,7 @@ the two can never disagree about cell size, distortion, layout, etc.
   - `size: 512 (mobile) / 768 (desktop)` — pixel resolution each card texture is rasterised at. Higher = sharper when a tile is large.
   - `cacheLimit: 56 (mobile) / 72 (desktop)` — max number of card textures kept in GPU memory at once (LRU).
 - **`TILE_POOL = 120`** — initial number of reusable tile meshes. Only this many quads are ever drawn regardless of how many students exist (it auto-grows if a viewport ever needs more).
-- **`CATEGORIES` array** — the fixed category vocabulary the college plans to use (internship, hackathons, research, …). NOTE: department + year filter pills are derived from live data, but category pills come from this fixed list — so a category with no matching students shows an empty result.
+- **`CATEGORIES` array** — the category vocabulary the college plans to use (internship, hackathons, research, …). Filter pills only show categories that exist in the data; this list just sets their display order (unknown categories follow alphabetically).
 - **`CANVAS_FONT = "At Hauss Mono"`** — the monospace font used to rasterise tile text; it's loaded before any card is drawn (see `wall.init()`).
 
 ---
@@ -151,12 +152,11 @@ from static `data.js` first, then swaps in `/api/students`.
 
 **Imports & helpers:**
 - `import { projects } from "../data.js"` — the static sample dataset.
-- `import { CATEGORIES } from "./config.js"` — the fixed category list for filter options.
-- `TYPE_TO_CATEGORY = { RESEARCH: "research", INTERNSHIP: "internship" }` — maps a student's `type` to a filter `category` for the static data.
+- `import { CATEGORIES } from "./config.js"` — used only to order the category filter pills.
 - `toThumb(url)` — derives a thumbnail path from an image path: strips the directory and extension, returns `/thumbs/<base>.webp`. Returns `null` if no url. (Used only for static data whose photos live in `public/`.)
 
 **Normalizers (turn raw records into the canonical frontend shape):**
-- `normalizeStatic(raw, i)` — converts a `data.js` entry into the app's student object. Assigns `id: i` (the array index), maps `title→name`, derives `thumbnail` (explicit or via `toThumb`), sets `category` via the map (default `"others"`), and guards `tags`/`socials`/`certificate` with safe defaults.
+- `normalizeStatic(raw, i)` — converts a `data.js` entry into the app's student object. Assigns `id: i` (the array index), maps `title→name`, derives `thumbnail` (explicit or via `toThumb`), sets `category` to `(category || type || "others").toLowerCase()` (the same rule `server/db.js` uses when seeding), and guards `tags`/`socials`/`certificate` with safe defaults.
 - `normalizeApi(s)` — API records already arrive close to final shape; this just spreads them and guards `tags` (must be an array) and `socials` (must be an object).
 
 **Initial state:**
@@ -166,7 +166,7 @@ from static `data.js` first, then swaps in `/api/students`.
 - The `if (stressMode && seed > students.length)` block **clones** the sample data up to `N` synthetic students (unique ids, `#i` appended to the name, cache-busting `?v=i` on image URLs). This is used to prove the wall scales to thousands of tiles without a backend.
 - `let byId = new Map(...)` — an id → student lookup used by the list view and profile.
 
-**`recomputeOptions()`** — rebuilds `options.departments` (unique, sorted) and `options.years` (unique, sorted descending) from the current `students`. Called on init and every time data reloads.
+**`recomputeOptions()`** — rebuilds `options.categories` (unique, ordered by `CATEGORIES` then alphabetically), `options.departments` (unique, sorted) and `options.years` (unique, sorted descending) from the current `students`. Called on init and every time data reloads.
 
 **Filter state + matching:**
 - `state = { category, department, year, search }` — the active filters (all start `"all"` / empty).
@@ -317,7 +317,7 @@ student's card is streamed to the GPU as one texture and cached (LRU).
 - If `active` is empty, just clears and returns (nothing to draw).
 - Otherwise `updateVisibleTiles()` then `renderer.render(scene, camera)`.
 
-> **Note (known behavior):** the rAF loop keeps running even when the list view is showing (the wall is `display:none`), so it keeps rendering off-screen. Minor wasted GPU; candidate for a future pause.
+> **Note:** while the list view is showing, the gallery is `display:none` (zero size), so `animate()` returns before any GPU work and `resize()` is skipped. `viewToggle.js` dispatches a `resize` event when switching back to the wall so the canvas re-measures.
 
 ---
 
@@ -408,7 +408,7 @@ events, and talks to the store. All are called once from `main.js`.
 - `renderPills(container, type, values, activeValue)` — renders an "ALL" pill plus one pill per value into a container, marking the active one.
 - **`initFilters()`:**
   - Grabs the floating `#filterToggle` button and `.filters-container` panel; bails if missing.
-  - `buildAll()` — renders the three pill groups: **category** (from the fixed `store.options.categories`), **department** and **year** (from live-data-derived `store.options.departments`/`.years`), each reflecting the current selection.
+  - `buildAll()` — renders the three pill groups (**category**, **department**, **year**) from the live-data-derived `store.options`, each reflecting the current selection. Pill values and labels are HTML-escaped because they come from imported data.
   - Calls `buildAll()` once, then `store.onData(buildAll)` so the pills rebuild when live data arrives (new departments/years appear) while keeping the current selection.
   - `panel.mousedown → stopPropagation` — prevents a drag started on the panel from panning the wall behind it.
   - Panel click handler: finds the clicked `.filter-pill`, clears `active` on its group, marks it active, calls `store.setFilter(type, filter)`, and does a quick scale "tap" animation.
@@ -416,20 +416,15 @@ events, and talks to the store. All are called once from `main.js`.
   - Toggle button click opens/closes; a document click outside the panel closes it.
   - `store.subscribe(...)` — reflects a `has-filters` class on the toggle button whenever any filter or search is active (visual hint).
 
-> **Known quirk:** category pills come from the fixed `CATEGORIES` list, not live data, so clicking a category no student has yields an empty wall.
-
 ## `src/ui/search.js` — the header search
 
 - **`initSearch()`:**
   - Grabs the `#searchBtn`, `.search-overlay`, `#searchInput`; bails if missing.
   - `open()` — shows the overlay and focuses the input after 50ms.
-  - `close()` — hides the overlay.
+  - `close()` — cancels any pending debounce, clears the input and the store search, and hides the overlay. So closing never leaves a hidden active filter.
   - Search button toggles open/close.
-  - The close (×) button calls `close()`.
+  - The close (×) button and the Escape key both call `close()`.
   - Input handler: **debounced** (120ms) call to `store.setSearch(input.value)`.
-  - Escape key: clears the input, clears the search in the store, and closes.
-
-> **Known quirk:** the × close button only hides the overlay — it does **not** clear the query (only Escape does). So closing via × can leave a hidden active search filter. (Small fix candidate: make `close()` also clear the input + `store.setSearch("")`.)
 
 ## `src/ui/listView.js` — the year-grouped list
 
@@ -453,14 +448,15 @@ events, and talks to the store. All are called once from `main.js`.
 
 ## `src/ui/profileOverlay.js` — the profile modal
 
-- `titleCase(name)` — splits the name on spaces, capitalises each word, and joins with `<br>` (so the hero name stacks vertically, e.g. "Ravi<br>Sharma").
+- `setStackedName(el, name)` — title-cases each word and stacks them with `<br>` elements, built from text nodes (never `innerHTML`) so a name from an imported sheet can't inject markup.
+- `safeUrl(url)` — returns the URL only if it starts with `http:`, `https:` or `mailto:`; otherwise `""`. Blocks `javascript:` / `data:` links in socials and certificate.
 - **`initProfileOverlay()`:**
   - Grabs `#profileOverlay`; if absent returns a no-op `{ open }`.
   - Grabs the backdrop, close button, next button.
   - `list` + `index` — the current navigable list and position (for "next").
   - `setText(id, value)` — safe `textContent` setter.
   - `formatStipend(v)` — if the stipend is purely numeric, formats it as `₹4,00,000` (Indian grouping); otherwise leaves it as-is (e.g. "Unpaid").
-  - `fill(s)` — populates every field: photo, name (via `titleCase`, `innerHTML`), the role line (`TYPE at <firstTag>`), bio, reg no, department, type, duration, formatted stipend, LinkedIn/Website hrefs, and the certificate link (adds `is-disabled` + removes href when there's no certificate).
+  - `fill(s)` — populates every field: photo, name (via `setStackedName`), the role line (`TYPE at <firstTag>`), bio, reg no, department, type, duration, formatted stipend, LinkedIn/Website hrefs (via `safeUrl`, else `#`), and the certificate link (adds `is-disabled` + removes href when there's no safe certificate URL).
   - `open(student, currentList)` — sets `list` to the passed filtered list (or all students), finds the student's index, fills the card, adds `active`, locks body scroll, and listens for Escape.
   - `close()` — plays the closing animation, removes `active`, unlocks scroll, removes the Escape listener.
   - `next()` — advances `index` (wraps) and fills the next student in `list`.
@@ -490,7 +486,7 @@ backed by Postgres (prod) / PGlite (local).
 - `GET /api/students/:id/image` and `/thumb` — the two blob routes.
 
 **Admin auth:**
-- `POST /api/admin/login` — calls `login(password)`; returns `{ token }` or 401 `Invalid password`.
+- `POST /api/admin/login` — `loginRateLimit` first (429 after 10 failures per IP in 15 min), then `login(password)`; returns `{ token }` or 401 `Invalid password`. `app.set("trust proxy", 1)` makes `req.ip` the real client IP behind Render's proxy.
 
 **Admin CRUD (all `requireAuth`):**
 - `POST /api/admin/students` — create → 201 + the new student.
@@ -498,7 +494,7 @@ backed by Postgres (prod) / PGlite (local).
 - `DELETE /api/admin/students/:id` — delete → `{ ok: true }`.
 - `POST /api/admin/students/:id/image` — `upload.single("image")`: validates the student + file, runs `processImage` (resize), stores full+thumb blobs, returns the updated student. Bad image → 400.
 - `POST /api/admin/students/:id/tags` — regenerates tags from the bio (or a provided `about`) via `generateTags`, saves them, returns `{ tags }`.
-- `POST /api/admin/enrich` — **stateless**: returns `{ bio, tags }` from a provided about text **without saving**, so the admin could preview the AI bio before committing. (Note: the current admin UI doesn't call this endpoint yet.)
+- `POST /api/admin/enrich` — **stateless**: returns `{ bio, tags }` from a provided about text **without saving**, so the admin can preview before committing. The admin modal's **Generate** button uses it.
 
 **Excel import (`requireAuth`):**
 - `POST /api/admin/import` — `upload.single("file")`:
@@ -546,19 +542,26 @@ backed by Postgres (prod) / PGlite (local).
 
 ## `server/auth.js` — admin auth
 
-- `SECRET` = `TOKEN_SECRET` env (default insecure dev value) — HMAC signing key.
-- `ADMIN_PASSWORD` = env (**default `"admin"`**).
+- `IS_PROD` — true when `DATABASE_URL` is set or `NODE_ENV=production`.
+- `SECRET` = `TOKEN_SECRET` env. If unset: a fixed dev value locally; a random per-process secret in production (logged as a warning; admins are logged out on restart).
+- `ADMIN_PASSWORD` = env. If unset: `"admin"` locally; in production **login is disabled** (logged as an error) rather than accepting a guessable default.
+- `passwordMatches(pw)` — SHA-256 both sides then `timingSafeEqual` (constant-time regardless of length).
+- `loginRateLimit` / `recordLoginFailure` / `clearLoginFailures` — in-memory per-IP failure counter (10 per 15 min, then 429 with `Retry-After`). Per-process, so it resets on restart and isn't shared across instances.
 - `TTL_MS` = 12 hours.
 - `sign(payload)` — base64url-encodes the JSON payload and appends an HMAC-SHA256 signature (`body.sig`). A tiny stateless JWT-like token.
 - `verify(token)` — splits `body.sig`, recomputes the HMAC, compares with `crypto.timingSafeEqual` (constant-time, avoids timing attacks), then checks the `exp` timestamp. Returns the payload or null.
 - `login(password)` — returns a signed 12h admin token if the password matches, else null.
 - `requireAuth(req, res, next)` — reads the `Bearer` token from the `Authorization` header, verifies it, and 401s `Unauthorized` if invalid. Express middleware guarding all `/api/admin/*` (except login).
 
-> **Security notes (flagged for hardening):** defaults (`admin` / `dev-insecure-secret-change-me`) are insecure if the env vars aren't set in prod; there's no login rate-limiting; a single shared password (no per-user accounts).
+> **Security note:** still a single shared password (no per-user accounts or audit log).
+
+## `server/env.js` — `.env` loader
+
+Imported first by `server/index.js`. If `./.env` exists, loads it with Node's built-in `process.loadEnvFile` (no dependency). Real environment variables win over the file. It has to be the first import because `auth.js` reads `process.env` at import time.
 
 ## `server/images.js` — image processing (sharp)
 
-- **`fetchRemoteImage(url)`** — validates it's an http(s) URL, fetches it (following redirects), errors on non-OK or > 20 MB, returns a Buffer. (No content-type check or timeout — a slow/non-image URL can stall the import loop.)
+- **`fetchRemoteImage(url)`** — validates it's an http(s) URL, fetches it (following redirects), with a 20 s timeout, rejects a declared or actual size over 20 MB, and rejects `text/html` responses (usually a Drive/OneDrive sign-in page for a non-public file) with a readable error. Returns a Buffer; sharp validates the actual image format.
 - **`processImage(buffer)`** — produces two WebPs with sharp, both `.rotate()` (respects EXIF orientation):
   - `full` — resized to fit within 1200×1200 (no enlargement), quality 82.
   - `thumb` — square 512×512 cover-crop (centered), quality 78.
@@ -572,7 +575,7 @@ backed by Postgres (prod) / PGlite (local).
 - **`rowToStudent(row)`** — lowercases all keys, then for each field picks the first non-empty aliased value; parses year to an int, splits tags on `, ; | /` (uppercased, max 4), uppercases department/type, lowercases category (defaults to type or "others"), and normalises the photo URL. Returns the record shape the import route expects.
 - **`parseWorkbook(buffer)`** — reads the workbook (SheetJS), takes the first sheet, converts to JSON rows (blank cells → `""`), maps each to a student, and drops rows with no name.
 
-> **Dependency note:** `xlsx@0.18.5` from npm has known advisories (prototype pollution / ReDoS); worth pinning/replacing with the maintained build.
+> **Dependency note:** `xlsx` is installed from SheetJS's own CDN (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`). The npm registry copy stopped at 0.18.5, which has prototype-pollution and ReDoS advisories. Upgrade by changing that URL in `package.json`.
 
 ## `server/tags.js` — AI enrichment + fallback
 
@@ -599,7 +602,7 @@ Talks to the same-origin API with a bearer token in `localStorage`.
 - `status(msg)` — writes to the status line.
 - `showApp()` / `logout()` — toggle the login vs app panels; logout clears the token.
 - **Login form submit** — POSTs the password to `/api/admin/login`, stores the returned token, shows the app. Errors render in `#loginError`.
-- `tagPills(tags)` — renders up to 3 tag chips for the table.
+- `tagPills(tags)` — renders up to 3 HTML-escaped tag chips for the table.
 - **`renderRows()`** — renders the students table, filtered by the search box (name/dept/type/tags substring). Each row has a thumbnail (hidden on error), name, dept, year, type, tags, and a Delete button.
 - **`loadStudents()`** — GET `/api/students` → render + status count.
 - Search input re-renders on input.
@@ -610,7 +613,7 @@ Talks to the same-origin API with a bearer token in `localStorage`.
 - **`formData()`** — reads the modal inputs into the API shape (uppercases department/type/tags, coerces year, defaults socials to "#").
 - **`persist()`** — validates name, then POST (create) or PUT (update); stores the returned id back in the hidden field; returns the saved student.
 - Photo file input — stashes the File in `pendingPhoto` and shows a local preview.
-- **Generate Tags button** — `persist()` first (so the server has a saved bio to read), then POSTs to `/tags`, fills the tags field. (Side effect: clicking Generate on a new record silently creates it.)
+- **Generate Tags button** — POSTs the About text to the stateless `/api/admin/enrich` and fills the tags field. Nothing is saved until the admin clicks Save. (The per-student `/tags` endpoint still exists for API use.)
 - **Save button** — `persist()`, then if a photo is pending uploads it via `/image` (FormData), closes the modal, reloads.
 - **Delete button** (in modal) — confirm + DELETE + reload.
 - **Import flow:**
@@ -740,27 +743,32 @@ npm run build && npm start    # http://localhost:3000  and  /admin
 npm run thumbs                # regenerate sample thumbnails after adding img*.jpeg
 ```
 
-**Admin login:** the password is the `ADMIN_PASSWORD` env var (default `admin`
-if unset). The database password is separate — it lives inside `DATABASE_URL`.
+**Admin login:** the password is the `ADMIN_PASSWORD` env var (from the
+environment or `.env`). Locally it defaults to `admin` if unset; in production
+(`DATABASE_URL` set) login is disabled until you set it. The database password
+is separate — it lives inside `DATABASE_URL`.
 
 ---
 
 # PART H — KNOWN BEHAVIORS / GOTCHAS (read before changing things)
 
 1. **Search haystack** excludes bio and regNo (only name/department/type/tags).
-2. **Category filter pills** come from the fixed `CATEGORIES` list, not live data — categories with no students return an empty wall.
-3. **Search × button** hides the overlay but doesn't clear the query (only Escape clears it).
-4. **Wall rAF loop** keeps rendering even when the list view is shown (wall is `display:none`).
-5. **Import enrichment is sequential** (one n8n call per row) — slow for very large sheets.
-6. **Import idempotency** needs a Reg No; rows without one create duplicates on re-import.
-7. **No unique constraint on `reg_no`** at the DB level — dedup is app-level only.
-8. **Auth**: default `ADMIN_PASSWORD`/`TOKEN_SECRET` are insecure if unset in prod; no login rate-limiting; single shared password.
-9. **`fetchRemoteImage`** has no timeout / content-type check.
-10. **`xlsx@0.18.5`** has known advisories — consider replacing.
-11. **`/api/students` is public** and includes regNo + bio — a privacy consideration for real data.
-12. **Images live in Postgres** (`bytea`) — fine at college scale; move to object storage (S3/R2) for very large datasets.
-13. **`/api/admin/enrich`** exists (preview bio before saving) but the admin UI doesn't call it yet.
-14. **Profile card sizes to content** (no fixed aspect ratio) so both columns stay equal height across short/long bios; the info column can scroll on very short viewports.
+2. **Import enrichment is sequential** (one n8n call per row, each capped at 20 s) — slow for very large sheets.
+3. **Import idempotency** needs a Reg No; rows without one create duplicates on re-import.
+4. **No unique constraint on `reg_no`** at the DB level — dedup is app-level only.
+5. **Auth** is a single shared password; the login rate limit is in-memory (per process).
+6. **`/api/students` is public** and includes regNo + bio — a privacy consideration for real data.
+7. **Images live in Postgres** (`bytea`) — fine at college scale; move to object storage (S3/R2) for very large datasets.
+8. **Profile card sizes to content** (no fixed aspect ratio) so both columns stay equal height across short/long bios; the info column can scroll on very short viewports.
+9. **User-supplied text is untrusted.** Anything from a sheet or the admin form must be escaped (list view, filters, admin table) or set via `textContent`; links go through `safeUrl`. Keep it that way when adding UI.
+
+**Resolved (Nov 2026, `fix/finish-hardening`):** category pills from live data;
+search × clears the query; wall stops rendering behind the list view; default
+prod password/secret refused; login rate limit; photo/webhook timeouts; `xlsx`
+replaced with the maintained build; Generate uses `/api/admin/enrich` without
+saving; stored-XSS fixes in profile name, filter pills, social/certificate links
+and the admin table; `.env` is now actually loaded; local tagger matches whole
+words only.
 
 ---
 

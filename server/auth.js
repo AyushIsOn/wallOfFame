@@ -3,9 +3,22 @@
 
 import crypto from "node:crypto";
 
-const SECRET = process.env.TOKEN_SECRET || "dev-insecure-secret-change-me";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
+// Production = a real database is configured (Render) or NODE_ENV says so.
+// There, the insecure dev defaults are refused instead of silently used.
+const IS_PROD = !!process.env.DATABASE_URL || process.env.NODE_ENV === "production";
+
+const SECRET =
+  process.env.TOKEN_SECRET ||
+  (IS_PROD ? crypto.randomBytes(32).toString("hex") : "dev-insecure-secret-change-me");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PROD ? "" : "admin");
 const TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+
+if (IS_PROD && !process.env.ADMIN_PASSWORD) {
+  console.error("[auth] ADMIN_PASSWORD is not set: admin login is DISABLED until you set it.");
+}
+if (IS_PROD && !process.env.TOKEN_SECRET) {
+  console.warn("[auth] TOKEN_SECRET is not set: using a random per-process secret (admins are logged out on restart).");
+}
 
 const sign = (payload) => {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -29,10 +42,43 @@ const verify = (token) => {
   }
 };
 
+// Constant-time comparison (hash both sides so lengths always match).
+const passwordMatches = (password) => {
+  const a = crypto.createHash("sha256").update(password).digest();
+  const b = crypto.createHash("sha256").update(ADMIN_PASSWORD).digest();
+  return crypto.timingSafeEqual(a, b);
+};
+
 export const login = (password) => {
-  if (typeof password !== "string" || password !== ADMIN_PASSWORD) return null;
+  if (!ADMIN_PASSWORD || typeof password !== "string" || !passwordMatches(password)) return null;
   return sign({ role: "admin", exp: Date.now() + TTL_MS });
 };
+
+// In-memory brute-force guard for the login route: at most MAX_FAILS failed
+// attempts per client IP per WINDOW_MS. Good enough for a single instance.
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILS = 10;
+const failures = new Map(); // ip -> { count, resetAt }
+
+export const loginRateLimit = (req, res, next) => {
+  const now = Date.now();
+  for (const [ip, f] of failures) if (f.resetAt <= now) failures.delete(ip);
+  const entry = failures.get(req.ip);
+  if (entry && entry.count >= MAX_FAILS) {
+    res.set("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
+    return res.status(429).json({ error: "Too many attempts. Try again later." });
+  }
+  next();
+};
+
+export const recordLoginFailure = (ip) => {
+  const now = Date.now();
+  const entry = failures.get(ip);
+  if (!entry || entry.resetAt <= now) failures.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+  else entry.count++;
+};
+
+export const clearLoginFailures = (ip) => failures.delete(ip);
 
 export const requireAuth = (req, res, next) => {
   const header = req.headers.authorization || "";

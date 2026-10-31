@@ -27,7 +27,9 @@ capped full image + a square thumbnail), so no separate file storage is needed.
    the **Web Service** (`wall-of-fame`).
 4. In the service's **Environment** settings, set:
    - `DATABASE_URL` — paste the Internal Database URL from step 2.
-   - `ADMIN_PASSWORD` — the admin login password.
+   - `ADMIN_PASSWORD` — the admin login password. **Required:** in production
+     the server refuses to fall back to a default, so admin login stays
+     disabled until this is set.
    - (`TOKEN_SECRET` is generated for you.)
    - `N8N_TAGS_WEBHOOK_URL` — optional (see below).
 5. Deploy. On first boot the schema is created and seeded with the sample

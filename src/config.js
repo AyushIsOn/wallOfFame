@@ -50,8 +50,8 @@ export const CARD = {
 // needs more). Only this many quads are ever drawn, regardless of N.
 export const TILE_POOL = 120;
 
-// Category vocabulary the college plans to use. Department + year filter
-// pills are derived from live data; categories are a fixed list.
+// Category vocabulary the college plans to use. Filter pills only show the
+// categories that exist in the data; this list sets their display order.
 export const CATEGORIES = [
   "internship",
   "hackathons",

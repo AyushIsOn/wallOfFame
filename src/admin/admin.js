@@ -51,7 +51,7 @@ $("loginForm").addEventListener("submit", async (e) => {
 $("logout").addEventListener("click", logout);
 
 // ---- Table ----
-const tagPills = (tags) => (tags || []).slice(0, 3).map((t) => `<span class="tag">${t}</span>`).join("");
+const tagPills = (tags) => (tags || []).slice(0, 3).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("");
 
 function renderRows() {
   const q = $("search").value.trim().toLowerCase();
@@ -62,10 +62,10 @@ function renderRows() {
     .map(
       (s) => `
     <tr data-id="${s.id}">
-      <td><img class="cell-thumb" src="${s.thumbnail || s.image || ""}" alt="" onerror="this.style.visibility='hidden'"/></td>
+      <td><img class="cell-thumb" src="${escapeHtml(s.thumbnail || s.image || "")}" alt="" onerror="this.style.visibility='hidden'"/></td>
       <td>${escapeHtml(s.name)}</td>
       <td>${escapeHtml(s.department || "")}</td>
-      <td>${s.year || ""}</td>
+      <td>${escapeHtml(s.year || "")}</td>
       <td>${escapeHtml(s.type || "")}</td>
       <td><div class="cell-tags">${tagPills(s.tags)}</div></td>
       <td><button class="ghost row-del" data-del="${s.id}">Delete</button></td>
@@ -162,13 +162,16 @@ $("photoFile").addEventListener("change", (e) => {
   $("photoPreview").src = URL.createObjectURL(file);
 });
 
+// Preview tags from the About text without saving; the admin reviews them and
+// they are stored on Save like any other field.
 $("genTags").addEventListener("click", async () => {
   try {
+    const about = $("f_bio").value.trim();
+    if (!about) throw new Error("Write an About / Bio first");
     status("Generating tags…");
-    const saved = await persist(); // ensure it exists so the server can read the bio
-    const { tags } = await api(`/api/admin/students/${saved.id}/tags`, { method: "POST", body: { about: $("f_bio").value } });
+    const { tags } = await api("/api/admin/enrich", { method: "POST", body: { about } });
     $("f_tags").value = (tags || []).join(", ");
-    status("Tags generated");
+    status("Tags generated — review, then Save");
   } catch (err) {
     status(err.message);
   }

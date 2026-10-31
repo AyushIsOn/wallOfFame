@@ -3,11 +3,25 @@
 
 import { store } from "../store.js";
 
-const titleCase = (name) =>
-  name
+// Render the name title-cased, one word per line, using text nodes so a name
+// coming from an imported sheet can never inject markup.
+const setStackedName = (el, name) => {
+  const words = String(name || "")
     .split(" ")
-    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-    .join("<br>");
+    .filter(Boolean)
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase());
+  el.replaceChildren();
+  words.forEach((w, i) => {
+    if (i) el.appendChild(document.createElement("br"));
+    el.appendChild(document.createTextNode(w));
+  });
+};
+
+// Only allow http(s)/mailto links in hrefs (blocks javascript: and data: URLs).
+const safeUrl = (url) => {
+  const raw = String(url || "").trim();
+  return /^(https?:|mailto:)/i.test(raw) ? raw : "";
+};
 
 export const initProfileOverlay = () => {
   const overlay = document.getElementById("profileOverlay");
@@ -39,7 +53,7 @@ export const initProfileOverlay = () => {
       photo.alt = s.name;
     }
     const name = document.getElementById("profileName");
-    if (name) name.innerHTML = titleCase(s.name);
+    if (name) setStackedName(name, s.name);
 
     setText("profileType", `${s.type}${s.tags[0] ? ` at ${s.tags[0]}` : ""}`);
     setText("profileBio", s.bio);
@@ -50,15 +64,16 @@ export const initProfileOverlay = () => {
     setText("profileStipend", formatStipend(s.stipend));
 
     const linkedin = document.getElementById("profileLinkedin");
-    if (linkedin) linkedin.href = s.socials.linkedin || "#";
+    if (linkedin) linkedin.href = safeUrl(s.socials.linkedin) || "#";
     const website = document.getElementById("profileWebsite");
-    if (website) website.href = s.socials.website || "#";
+    if (website) website.href = safeUrl(s.socials.website) || "#";
 
     const cert = document.getElementById("profileCertificate");
     if (cert) {
-      const has = !!s.certificate;
+      const certUrl = safeUrl(s.certificate);
+      const has = !!certUrl;
       cert.classList.toggle("is-disabled", !has);
-      if (has) cert.href = s.certificate;
+      if (has) cert.href = certUrl;
       else cert.removeAttribute("href");
     }
   };

@@ -258,6 +258,7 @@ export class Wall {
   resize() {
     const w = this.container.offsetWidth;
     const h = this.container.offsetHeight;
+    if (!w || !h) return; // hidden (list view); resized again when shown
     this.renderer.setSize(w, h);
     this.shared.uAspect.value = w / h;
   }
@@ -268,6 +269,10 @@ export class Wall {
     this.offset.x += (this.targetOffset.x - this.offset.x) * k;
     this.offset.y += (this.targetOffset.y - this.offset.y) * k;
     this.zoom += (this.targetZoom - this.zoom) * k;
+
+    // The list view hides the gallery (display:none). Skip GPU work until it
+    // is visible again; this also avoids a zero-height aspect ratio.
+    if (!this.container.offsetWidth || !this.container.offsetHeight) return;
 
     if (!this.active.length) {
       this.renderer.clear();

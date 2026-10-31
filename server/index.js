@@ -2,13 +2,14 @@
 // (public student data + images, admin CRUD / Excel import / image upload /
 // tag generation). One service, deployable as a single Render Web Service.
 
+import "./env.js"; // must stay first: loads .env before modules read process.env
 import express from "express";
 import multer from "multer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { initDb } from "./db.js";
-import { login, requireAuth } from "./auth.js";
+import { login, requireAuth, loginRateLimit, recordLoginFailure, clearLoginFailures } from "./auth.js";
 import {
   listStudents,
   getStudent,
@@ -28,6 +29,9 @@ const distDir = path.join(__dirname, "..", "dist");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 const app = express();
+// Render (and most hosts) sit behind one proxy hop; trust it so req.ip is the
+// real client IP for the login rate limit.
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "2mb" }));
 
 // Any :id must be a positive integer; otherwise 404 (avoids DB cast errors).
@@ -58,9 +62,13 @@ app.get("/api/students/:id/image", sendBlob("image"));
 app.get("/api/students/:id/thumb", sendBlob("thumb"));
 
 // ---- Admin auth ----
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login", loginRateLimit, (req, res) => {
   const token = login(req.body?.password);
-  if (!token) return res.status(401).json({ error: "Invalid password" });
+  if (!token) {
+    recordLoginFailure(req.ip);
+    return res.status(401).json({ error: "Invalid password" });
+  }
+  clearLoginFailures(req.ip);
   res.json({ token });
 });
 

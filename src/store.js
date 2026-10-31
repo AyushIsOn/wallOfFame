@@ -8,8 +8,6 @@
 import { projects } from "../data.js";
 import { CATEGORIES } from "./config.js";
 
-const TYPE_TO_CATEGORY = { RESEARCH: "research", INTERNSHIP: "internship" };
-
 const toThumb = (url) => {
   if (!url) return null;
   const base = url.split("/").pop().replace(/\.[^.]+$/, "");
@@ -26,7 +24,9 @@ const normalizeStatic = (raw, i) => ({
   regNo: raw.regNo,
   department: raw.department,
   type: raw.type,
-  category: TYPE_TO_CATEGORY[raw.type] || "others",
+  // Same rule the server uses when seeding (server/db.js), so the static first
+  // paint and the live data agree.
+  category: (raw.category || raw.type || "others").toLowerCase(),
   duration: raw.duration,
   stipend: raw.stipend,
   bio: raw.bio,
@@ -43,7 +43,7 @@ const normalizeApi = (s) => ({
 });
 
 let students = projects.map(normalizeStatic);
-const options = { categories: CATEGORIES, departments: [], years: [] };
+const options = { categories: [], departments: [], years: [] };
 
 const seed = typeof window !== "undefined"
   ? parseInt(new URLSearchParams(window.location.search).get("seed") || "", 10)
@@ -66,8 +66,18 @@ if (stressMode && seed > students.length) {
 
 let byId = new Map(students.map((s) => [s.id, s]));
 
+// Known categories keep the college's preferred order; any others found in the
+// data (e.g. a custom Type from a sheet) follow alphabetically.
+const categoryRank = (c) => {
+  const i = CATEGORIES.indexOf(c);
+  return i === -1 ? CATEGORIES.length : i;
+};
+
 const recomputeOptions = () => {
   const uniq = (a) => [...new Set(a)];
+  options.categories = uniq(students.map((s) => s.category).filter(Boolean)).sort(
+    (a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b)
+  );
   options.departments = uniq(students.map((s) => s.department).filter(Boolean)).sort();
   options.years = uniq(students.map((s) => s.year).filter(Boolean)).sort((a, b) => b - a);
 };
