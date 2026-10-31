@@ -11,10 +11,30 @@ import { WALL, CARD, TILE_POOL, CANVAS_FONT } from "../config.js";
 import { tileVertexShader, tileFragmentShader } from "../shaders.js";
 import { CardCache } from "./textureCache.js";
 
+// Overlay UI: pointer/touch input that starts here must not pan the wall (and
+// touches must not be preventDefault-ed, or taps on links/buttons break).
 const UI_SELECTOR =
-  ".filters-container,.filter-toggle-btn,.list-view-wrapper,.profile-overlay,.view-toggle-container,.search-cta,.search-overlay";
+  ".filters-container,.filter-toggle-btn,.list-view-wrapper,.profile-overlay,.view-toggle-container,.search-cta,.search-overlay,.home-logo";
 
 const HOVER_LERP = 0.18;
+
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+
+// Row stride for N students (see WALL in config.js). The wide stride is
+// bumped until it shares no factor with N, so rows never realign early.
+export const strideFor = (n) => {
+  if (n < WALL.wideStrideFrom) return WALL.rowStride;
+  let s = WALL.wideRowStride;
+  while (gcd(s, n) !== 1) s++;
+  return s;
+};
+
+// Student index for cell (cx, cy): the ONE mapping shared by drawing and
+// hit-testing, so a click always opens the student that is drawn there.
+const cellIndex = (cx, cy, stride, count) => {
+  const raw = (cx + cy * stride) % count;
+  return ((raw % count) + count) % count;
+};
 
 export class Wall {
   constructor(container, onSelect) {
@@ -30,6 +50,7 @@ export class Wall {
     this.prevMouse = { x: 0, y: 0 };
     this.pointer = null;
     this.active = [];
+    this.stride = WALL.rowStride;
     this.pool = [];
   }
 
@@ -98,6 +119,7 @@ export class Wall {
 
   setActiveStudents(active) {
     this.active = active;
+    this.stride = strideFor(active.length);
     if (this.renderer) {
       this.renderer.domElement.style.visibility = active.length ? "visible" : "hidden";
     }
@@ -134,8 +156,7 @@ export class Wall {
     let i = 0;
     for (let cy = minY; cy <= maxY; cy++) {
       for (let cx = minX; cx <= maxX; cx++) {
-        const raw = (cx + cy * WALL.rowStride) % count;
-        const idx = ((raw % count) + count) % count;
+        const idx = cellIndex(cx, cy, this.stride, count);
         const mesh = this.pool[i++];
         const u = mesh.material.uniforms;
 
@@ -169,9 +190,7 @@ export class Wall {
 
   indexAt(clientX, clientY) {
     const { cx, cy } = this.cellCoordsAt(clientX, clientY);
-    const count = this.active.length;
-    const raw = (cx + cy * WALL.rowStride) % count;
-    return ((raw % count) + count) % count;
+    return cellIndex(cx, cy, this.stride, this.active.length);
   }
 
   attachEvents() {
@@ -210,7 +229,8 @@ export class Wall {
       }
     };
 
-    document.addEventListener("mousedown", (e) => startDrag(e.clientX, e.clientY, e.target));
+    // Left button only: a right-click must not count as a click on a tile.
+    document.addEventListener("mousedown", (e) => e.button === 0 && startDrag(e.clientX, e.clientY, e.target));
     document.addEventListener("mousemove", (e) => move(e.clientX, e.clientY));
     document.addEventListener("mouseup", (e) => end(e.clientX, e.clientY));
     document.addEventListener("mouseleave", () => end());
@@ -243,7 +263,9 @@ export class Wall {
       passive
     );
 
-    document.addEventListener("contextmenu", (e) => e.preventDefault());
+    // Right-click on the wall would interrupt a drag; elsewhere (list view,
+    // profile links) keep the normal browser menu.
+    this.container.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("resize", () => this.resize());
 
     const canvas = this.renderer.domElement;

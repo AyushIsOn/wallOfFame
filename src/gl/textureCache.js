@@ -6,7 +6,7 @@
 // network stay bounded no matter how many students exist.
 
 import * as THREE from "three";
-import { loadImage, drawCard, cardImageUrl, averageColor } from "./card.js";
+import { loadImage, drawCard, cardImageUrl, averageColor, PLACEHOLDER_GLOW } from "./card.js";
 
 const BLACK = new THREE.Color(0, 0, 0);
 
@@ -48,11 +48,11 @@ export class CardCache {
   // off a lazy load if needed. Never blocks.
   get(student) {
     let entry = this.entries.get(student.id);
-    // Guard against id reuse across dataset swaps: the wall paints from the
-    // static data.js first (ids 0,1,2…) and then swaps in the live API data,
-    // whose serial ids overlap those but point at DIFFERENT students. Without
-    // this check a cell would keep showing the stale cached card for that id
-    // while a click opened the new student at that id (display != identity).
+    // Cards are cached by id, but the same id can come back as a DIFFERENT
+    // student object when the dataset is replaced (a reload after an admin
+    // edit, or the dev sample fallback whose ids 0,1,2… overlap the DB's).
+    // A new object means new data: rebuild the card, or a cell would show the
+    // stale card while a click opened the current student (display != identity).
     if (entry && entry.student !== student) {
       entry.texture?.dispose();
       this.entries.delete(student.id);
@@ -70,7 +70,7 @@ export class CardCache {
   async load(student, entry) {
     // Prefer the thumbnail; fall back to the full-res image if the thumbnail
     // is missing (e.g. a freshly-added student before the pipeline runs).
-    const candidates = [cardImageUrl(student)];
+    const candidates = [cardImageUrl(student)].filter(Boolean);
     if (student.image && student.image !== cardImageUrl(student)) {
       candidates.push(student.image);
     }
@@ -87,7 +87,13 @@ export class CardCache {
         /* try the next source */
       }
     }
-    entry.status = "error"; // keep showing the placeholder
+    // No photo, or every source failed: still draw the card (initials + name,
+    // year, tags, department) so the student doesn't vanish from the wall.
+    const [r, g, b] = PLACEHOLDER_GLOW;
+    entry.avg = new THREE.Color(r, g, b);
+    entry.texture = makeTexture(drawCard(student, null, this.size));
+    entry.status = candidates.length ? "error" : "no-photo";
+    this.onReady();
   }
 
   // Dispose least-recently-used cards beyond the limit (never the ones used

@@ -6,14 +6,16 @@ import "./env.js"; // must stay first: loads .env before modules read process.en
 import express from "express";
 import multer from "multer";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { initDb } from "./db.js";
+import { initDb, closeDb } from "./db.js";
 import { login, requireAuth, loginRateLimit, recordLoginFailure, clearLoginFailures } from "./auth.js";
 import {
   listStudents,
   getStudent,
   getByRegNo,
+  getImportState,
   createStudent,
   updateStudent,
   deleteStudent,
@@ -29,9 +31,45 @@ const distDir = path.join(__dirname, "..", "dist");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 const app = express();
-// Render (and most hosts) sit behind one proxy hop; trust it so req.ip is the
-// real client IP for the login rate limit.
-app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+// Number of reverse-proxy hops in front of the app, so req.ip is the client IP
+// (used by the login rate limit). Render sets RENDER=true and has one hop.
+// Trusting more hops than really exist would let clients spoof their IP, so
+// the default elsewhere is 0. Override with TRUST_PROXY=<hops>.
+app.set("trust proxy", Number(process.env.TRUST_PROXY ?? (process.env.RENDER ? 1 : 0)));
+
+// Security headers. The CSP allows only this origin's scripts (no inline
+// script, no eval) as a second line of defence against injected markup.
+// Inline style attributes are allowed: index.html and the UI use them.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+  });
+  // The admin must never be framed (clickjacking). The public wall may be
+  // embedded, e.g. in the college website.
+  const isAdmin = req.path === "/admin" || req.path === "/admin.html" || req.path.startsWith("/api/admin");
+  if (isAdmin) {
+    res.set("Content-Security-Policy", `${CSP}; frame-ancestors 'none'`);
+    res.set("X-Frame-Options", "DENY");
+  } else {
+    res.set("Content-Security-Policy", CSP);
+  }
+  next();
+});
+
 app.use(express.json({ limit: "2mb" }));
 
 // Any :id must be a positive integer; otherwise 404 (avoids DB cast errors).
@@ -54,7 +92,9 @@ const sendBlob = (which) =>
     const blob = await getImageBlob(req.params.id, which);
     if (!blob) return res.status(404).end();
     res.set("Content-Type", blob.type || "image/webp");
-    res.set("Cache-Control", "public, max-age=300");
+    // URLs from the API carry ?v=<updated_at>, which changes whenever the photo
+    // does, so a versioned URL can be cached for good.
+    res.set("Cache-Control", req.query.v ? "public, max-age=31536000, immutable" : "public, max-age=300");
     res.send(Buffer.from(blob.data));
   });
 
@@ -118,46 +158,119 @@ app.post("/api/admin/enrich", requireAuth, wrap(async (req, res) => {
   res.json(await enrichAbout(req.body?.about || ""));
 }));
 
+// On re-import, only cells that have a value update the student; blank cells
+// keep what's there. (Form-response sheets are cumulative and often lack
+// columns the admin fills in later, e.g. Certificate.)
+const nonBlankFields = (rec, existing) => {
+  const out = {};
+  for (const [key, value] of Object.entries(rec)) {
+    if (key === "socials" || key === "imageUrl") continue;
+    if (value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value) && !value.length) continue;
+    out[key] = value;
+  }
+  const linkedin = rec.socials.linkedin !== "#" ? rec.socials.linkedin : null;
+  const website = rec.socials.website !== "#" ? rec.socials.website : null;
+  if (linkedin || website) {
+    out.socials = {
+      linkedin: linkedin || existing.socials.linkedin,
+      website: website || existing.socials.website,
+    };
+  }
+  return out;
+};
+
 // Excel/CSV import -> create students (auto-tags rows that have none, and
-// fetches a Photo URL column if present). Idempotent for rows with a Reg No.
+// fetches a Photo URL column if present). Idempotent for rows with a Reg No:
+// those update the existing student (non-blank cells only) instead of
+// creating a duplicate, and an unchanged About skips the AI call.
 app.post("/api/admin/import", requireAuth, upload.single("file"), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-  const records = parseWorkbook(req.file.buffer);
+  let records;
+  try {
+    records = parseWorkbook(req.file.buffer);
+  } catch {
+    return res.status(400).json({ error: "Could not read that file. Upload an .xlsx, .xls or .csv sheet." });
+  }
+  if (!records.length) {
+    return res.status(400).json({
+      error: "No students found. The first row must be the headers, and one header must be Name (or Student Name / Full Name).",
+    });
+  }
   let imported = 0;
   let updated = 0;
   let photos = 0;
+  let photosSkipped = 0;
   const photoErrors = [];
   for (const rec of records) {
+    const existing = rec.regNo ? await getByRegNo(rec.regNo) : null;
+    const last = existing ? await getImportState(existing.id) : { aboutSource: null, photoSource: null };
+
     if (rec.bio) {
-      try {
-        const e = await enrichAbout(rec.bio);
-        if (e.bio) rec.bio = e.bio; // polished, concise first-person bio
-        if (!rec.tags?.length) rec.tags = e.tags;
-      } catch {
-        /* keep the original bio/tags */
+      const about = rec.bio; // raw text from the sheet
+      if (existing && last.aboutSource === about) {
+        // Same About as last import: keep the current bio (including any
+        // edits made in the admin) and skip the AI call.
+        delete rec.bio;
+      } else {
+        try {
+          const e = await enrichAbout(about);
+          if (e.bio) rec.bio = e.bio; // polished, concise first-person bio
+          // New or changed About: tags follow it, unless the sheet has its own.
+          if (!rec.tags.length) rec.tags = e.tags;
+        } catch {
+          /* keep the original bio/tags */
+        }
+        rec.aboutSource = about;
       }
     }
-    const existing = rec.regNo ? await getByRegNo(rec.regNo) : null;
-    const student = existing ? (updated++, await updateStudent(existing.id, rec)) : (imported++, await createStudent(rec));
+
+    const student = existing
+      ? (updated++, await updateStudent(existing.id, nonBlankFields(rec, existing)))
+      : (imported++, await createStudent(rec));
 
     if (rec.imageUrl) {
-      try {
-        const buf = await fetchRemoteImage(rec.imageUrl);
-        const { full, thumb } = await processImage(buf);
-        await setImageBlob(student.id, full, thumb);
-        photos++;
-      } catch (e) {
-        photoErrors.push(`${rec.name}: photo ${e.message}`);
+      if (existing?.image && last.photoSource === rec.imageUrl) {
+        photosSkipped++; // same Photo URL as last import: keep the stored photo
+      } else {
+        try {
+          const buf = await fetchRemoteImage(rec.imageUrl);
+          const { full, thumb } = await processImage(buf);
+          await setImageBlob(student.id, full, thumb, { photoSource: rec.imageUrl });
+          photos++;
+        } catch (e) {
+          photoErrors.push(`${rec.name}: photo ${e.message}`);
+        }
       }
     }
   }
-  res.json({ imported, updated, total: records.length, photos, photoErrors });
+  res.json({ imported, updated, total: records.length, photos, photosSkipped, photoErrors });
 }));
 
+// Unknown API routes get a JSON 404 (not the HTML page from express).
+app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
+
 // ---- Static frontend ----
-app.use(express.static(distDir));
-app.get("/admin", (_req, res) => res.sendFile(path.join(distDir, "admin.html")));
-app.get("/", (_req, res) => res.sendFile(path.join(distDir, "index.html")));
+// Vite puts content-hashed files in /assets, so they can be cached for good.
+// Everything else (HTML, fonts, sample photos) is revalidated via ETag.
+app.use(
+  express.static(distDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.set("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    },
+  })
+);
+const NOT_BUILT =
+  "The frontend isn't built yet. Run `npm run build` (then reload), or use `npm run dev` for the hot-reload dev server on http://localhost:5173.";
+const sendPage = (file) => (_req, res) => {
+  const full = path.join(distDir, file);
+  if (!existsSync(full)) return res.status(503).type("text/plain").send(NOT_BUILT);
+  res.sendFile(full);
+};
+app.get("/admin", sendPage("admin.html"));
+app.get("/", sendPage("index.html"));
 
 // ---- Error handler ----
 app.use((err, _req, res, _next) => {
@@ -167,15 +280,37 @@ app.use((err, _req, res, _next) => {
   if (err && err.name === "MulterError") {
     return res.status(400).json({ error: err.message });
   }
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Request body is not valid JSON" });
+  }
+  // Other client errors raised by Express/body-parser (e.g. 413 body too large).
+  const status = err?.status || err?.statusCode;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: err.expose ? err.message : "Bad request" });
+  }
+  // Unexpected: log the details, but don't send internals to the client.
   console.error(err);
-  res.status(500).json({ error: err.message || "Server error" });
+  res.status(500).json({ error: "Server error" });
 });
 
 const PORT = process.env.PORT || 3000;
 initDb()
-  .then(() => app.listen(PORT, () => console.log(`Wall of Fame server on :${PORT}`)))
+  .then(() => {
+    const server = app.listen(PORT, () => console.log(`Wall of Fame server on :${PORT}`));
+    if (!existsSync(path.join(distDir, "index.html"))) console.warn(`[server] ${NOT_BUILT}`);
+
+    // Graceful shutdown (Render sends SIGTERM on every deploy; Ctrl-C locally):
+    // stop accepting requests, let in-flight ones finish, then close the DB.
+    const shutdown = (signal) => {
+      console.log(`[server] ${signal} received, shutting down`);
+      setTimeout(() => process.exit(1), 10_000).unref();
+      server.close(() => closeDb().finally(() => process.exit(0)));
+    };
+    process.once("SIGTERM", shutdown);
+    process.once("SIGINT", shutdown);
+  })
   .catch((err) => {
-    console.error("Failed to start:", err);
+    console.error("Failed to start:", err.message || err);
     process.exit(1);
   });
 

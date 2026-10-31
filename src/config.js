@@ -7,7 +7,14 @@ export const WALL = {
   dragZoom: 1.25, // zoom level while dragging
   lerpFactor: 0.075, // pan/zoom smoothing
   distortionK: 0.08, // barrel/fisheye strength (post-process + click math)
-  rowStride: 3.0, // texIndex = cellId.x + cellId.y * rowStride
+  // Cell (x, y) shows student (x + y * stride) mod N. A small stride gives the
+  // diagonal repeat pattern that suits a few students; but adjacent rows then
+  // overlap, so a large set would show each student ~2x per screen. From
+  // wideStrideFrom students on, a wider stride (>= the visible column count,
+  // coprime with N) is used so every tile on screen is a different student.
+  rowStride: 3,
+  wideRowStride: 17,
+  wideStrideFrom: 64,
   cellMargin: 1, // extra ring of cells rendered beyond the viewport
 };
 

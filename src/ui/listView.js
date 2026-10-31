@@ -71,6 +71,12 @@ export const initListView = (onSelect) => {
     if (!container) return;
 
     if (!students.length) {
+      const message =
+        store.status === "loading"
+          ? "Loading students…"
+          : store.status === "error"
+            ? "Couldn't load students right now. Please refresh the page."
+            : "No students match these filters.";
       container.innerHTML = `
         <div class="project-list-wrapper">
           <div class="project-list-container">
@@ -78,7 +84,7 @@ export const initListView = (onSelect) => {
               <h2>All Students</h2>
             </div>
             <div class="projects-container">
-              <p class="list-empty">No students match these filters.</p>
+              <p class="list-empty">${message}</p>
             </div>
           </div>
         </div>`;

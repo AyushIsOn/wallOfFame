@@ -1,9 +1,11 @@
 // Data store: the single source of truth for the wall, list and filters.
 //
-// It renders instantly from the static data.js (offline / first paint), then
 // `load()` fetches the live dataset from /api/students (fed by the admin +
-// Excel/n8n pipeline) and swaps it in. Adding a backend required changing
-// only this file.
+// Excel/n8n pipeline). Until it answers, the store is empty and `status` is
+// "loading". If the API is unreachable, a dev build (npm run dev) falls back
+// to the sample data in data.js so the frontend can be worked on without the
+// server; a production build shows an error instead of fake students.
+// `?seed=N` (stress test) skips the API and clones the sample data to N.
 
 import { projects } from "../data.js";
 import { CATEGORIES } from "./config.js";
@@ -42,7 +44,7 @@ const normalizeApi = (s) => ({
   socials: s.socials || { linkedin: "#", website: "#" },
 });
 
-let students = projects.map(normalizeStatic);
+const sampleStudents = projects.map(normalizeStatic);
 const options = { categories: [], departments: [], years: [] };
 
 const seed = typeof window !== "undefined"
@@ -50,19 +52,24 @@ const seed = typeof window !== "undefined"
   : NaN;
 const stressMode = Number.isFinite(seed) && seed > 0;
 
-if (stressMode && seed > students.length) {
-  const base = students;
-  students = Array.from({ length: seed }, (_, i) => {
-    const b = base[i % base.length];
-    return {
-      ...b,
-      id: i,
-      name: `${b.name} #${i + 1}`,
-      image: `${b.image}?v=${i}`,
-      thumbnail: b.thumbnail ? `${b.thumbnail}?v=${i}` : null,
-    };
-  });
-}
+// Stress test: clone the samples up to N with unique ids and image URLs.
+const stressStudents = () =>
+  seed <= sampleStudents.length
+    ? sampleStudents
+    : Array.from({ length: seed }, (_, i) => {
+        const b = sampleStudents[i % sampleStudents.length];
+        return {
+          ...b,
+          id: i,
+          name: `${b.name} #${i + 1}`,
+          image: `${b.image}?v=${i}`,
+          thumbnail: b.thumbnail ? `${b.thumbnail}?v=${i}` : null,
+        };
+      });
+
+// "loading" -> "ready" (live data) | "sample" (dev fallback / stress) | "error"
+let status = stressMode ? "sample" : "loading";
+let students = stressMode ? stressStudents() : [];
 
 let byId = new Map(students.map((s) => [s.id, s]));
 
@@ -107,25 +114,36 @@ const notify = () => {
 
 async function load() {
   if (stressMode) return; // stress mode keeps the synthetic dataset
+  let data = null;
   try {
     const res = await fetch("/api/students");
-    if (!res.ok) return;
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      students = data.map(normalizeApi);
-      byId = new Map(students.map((s) => [s.id, s]));
-      recomputeOptions();
-      dataListeners.forEach((fn) => fn());
-      notify();
-    }
+    if (res.ok) data = await res.json();
   } catch {
-    /* keep the static fallback */
+    /* network error: handled below */
   }
+  if (Array.isArray(data)) {
+    students = data.map(normalizeApi);
+    status = "ready";
+  } else if (import.meta.env.DEV) {
+    students = sampleStudents; // frontend dev without the API server
+    status = "sample";
+  } else {
+    students = [];
+    status = "error";
+  }
+  byId = new Map(students.map((s) => [s.id, s]));
+  recomputeOptions();
+  dataListeners.forEach((fn) => fn());
+  notify();
 }
 
 export const store = {
   get students() {
     return students;
+  },
+  /** "loading" | "ready" | "sample" | "error" */
+  get status() {
+    return status;
   },
   options,
   byId: (id) => byId.get(id) ?? byId.get(Number(id)) ?? byId.get(String(id)) ?? null,

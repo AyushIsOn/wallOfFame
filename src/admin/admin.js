@@ -62,7 +62,7 @@ function renderRows() {
     .map(
       (s) => `
     <tr data-id="${s.id}">
-      <td><img class="cell-thumb" src="${escapeHtml(s.thumbnail || s.image || "")}" alt="" onerror="this.style.visibility='hidden'"/></td>
+      <td><img class="cell-thumb" src="${escapeHtml(s.thumbnail || s.image || "")}" alt=""/></td>
       <td>${escapeHtml(s.name)}</td>
       <td>${escapeHtml(s.department || "")}</td>
       <td>${escapeHtml(s.year || "")}</td>
@@ -86,13 +86,34 @@ async function loadStudents() {
 
 $("search").addEventListener("input", renderRows);
 
+// Hide thumbnails that fail to load (students without a photo). A capturing
+// listener, because the CSP forbids inline onerror= handlers.
+$("rows").addEventListener(
+  "error",
+  (e) => {
+    if (e.target.matches?.("img.cell-thumb")) e.target.style.visibility = "hidden";
+  },
+  true
+);
+
+async function removeStudent(id) {
+  if (!id || !confirm("Delete this student?")) return false;
+  try {
+    await api(`/api/admin/students/${id}`, { method: "DELETE" });
+    await loadStudents();
+    status("Deleted");
+    return true;
+  } catch (err) {
+    status(err.message);
+    return false;
+  }
+}
+
 $("rows").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-del]");
   if (del) {
     e.stopPropagation();
-    if (!confirm("Delete this student?")) return;
-    await api(`/api/admin/students/${del.dataset.del}`, { method: "DELETE" });
-    await loadStudents();
+    await removeStudent(del.dataset.del);
     return;
   }
   const row = e.target.closest("tr[data-id]");
@@ -196,11 +217,7 @@ $("saveBtn").addEventListener("click", async () => {
 });
 
 $("deleteBtn").addEventListener("click", async () => {
-  const id = $("f_id").value;
-  if (!id || !confirm("Delete this student?")) return;
-  await api(`/api/admin/students/${id}`, { method: "DELETE" });
-  closeModal();
-  await loadStudents();
+  if (await removeStudent($("f_id").value)) closeModal();
 });
 
 // ---- Import (primary flow) ----
@@ -218,7 +235,8 @@ $("templateBtn").addEventListener("click", () => {
   a.href = URL.createObjectURL(blob);
   a.download = "wall-of-fame-template.csv";
   a.click();
-  URL.revokeObjectURL(a.href);
+  // Revoking synchronously can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
 async function handleImport(file) {
@@ -232,6 +250,7 @@ async function handleImport(file) {
     let msg = `Imported ${r.imported} new`;
     if (r.updated) msg += `, updated ${r.updated}`;
     if (r.photos) msg += `, ${r.photos} photos`;
+    if (r.photosSkipped) msg += `, ${r.photosSkipped} photos unchanged`;
     if (r.photoErrors?.length) msg += ` — ${r.photoErrors.length} photo(s) failed`;
     status(msg);
     if (r.photoErrors?.length) console.warn("Photo errors:", r.photoErrors);
@@ -269,5 +288,18 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
+// The token's payload is plain base64url JSON with an `exp` timestamp (only
+// the signature is secret), so an expired session can be detected up front
+// instead of on the first failed save.
+const tokenExpired = (t) => {
+  try {
+    const body = t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+    return !(JSON.parse(atob(body)).exp > Date.now());
+  } catch {
+    return true;
+  }
+};
+
 // Boot
-if (token) showApp();
+if (token && tokenExpired(token)) logout();
+else if (token) showApp();
